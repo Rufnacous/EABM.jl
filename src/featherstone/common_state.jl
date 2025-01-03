@@ -68,6 +68,7 @@ function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, 
     harness[a].c = cJ + (harness[a].c ⨱ vJ);
 
     harness[a].X0 = harness[a].Xλ * harness[λ(a)].X0;
+    
 
     OT = harness[a].S * harness[a].q + [0,0,0, (a.child_anchor )...];  
 

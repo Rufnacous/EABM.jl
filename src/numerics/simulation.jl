@@ -7,20 +7,33 @@
 # When introduced, this step represented a 20% speed-up in integrations.
 
 function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, time::Real;
-    initcond::Vector{<:Real}=zeros(body), dt_modify::Real=0.5, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm)
+    initcond::Vector{<:Real}=zeros(body), dt_modify::Real=0.5, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm,
+    integrator::Symbol=:approx, checkpoints::Vector{<:Real}=zeros(0))
 
     float_state_harness = StateHarness(Float64, body);
     dual_state_harness = StateHarness(Float64, body);
     
-    prob = ODEProblem(make_vector_cauchy_problem(dynamics_algorithm), initcond, (0, time), (body, float_state_harness, dual_state_harness, force, torque));
+    checkpoints = checkpoints .* time;
+    
+    prob = ODEProblem(
+        make_vector_cauchy_problem(dynamics_algorithm), initcond, (0, time), (body, float_state_harness, dual_state_harness, force, torque),
+        tstops=checkpoints);
 
     freqs, shapes = frequencies(body, force, torque, dynamics_algorithm=dynamics_algorithm);
-    dt = dt_modify / maximum(freqs);
+    dt = 0.5dt_modify / maximum(freqs);
 
-    sol = solve(prob, TRBDF2(autodiff=true));
-    # sol = solve(prob, SSPRK22(), dt = dt);
+    starttime = time();
+    condition(u, t, integrator) = any(t .== checkpoints);
+    affect!(integrator) = println("T = ",integrator.t, " @ ",(time() - starttime)/60, "mins");
+    cb_checkpoints = DiscreteCallback(condition, affect!);
 
-    return sol;
+    if integrator == :approx
+        return solve(prob, TRBDF2(autodiff=true), callback=cb_checkpoints);
+    elseif integrator == :stable
+        return solve(prob, SSPRK22(), dt = dt, callback=cb_checkpoints);
+    else
+        throw(ExceptionError("Unknown integrator type requested of EABM.jl."))
+    end
     
 end
 

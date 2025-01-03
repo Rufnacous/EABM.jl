@@ -16,7 +16,7 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
         dudt = flow_acceleration(flow, i.p, t);
         pAf = Iaf * ( (vf ⨱ vJf) - (i.X0 * [0,0,0, (-dudt)...]) );
 
-        i.IA = a.I #+ Iaf;
+        i.IA = a.I + Iaf;
         i.pA = i.v ⨳ (a.I * i.v) - fx(a,i,t) + pAf;
         return
     end
@@ -29,4 +29,27 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
             (aba_pass3!, :forward),
             ] ]..., (get_acceleration, :return)]
     );
+end
+
+
+function force_further_added_mass_for_elongated_bodies(fluid_density::Number, flow_func::Function)
+    function f_ma_elongated(a::Articulation, i::ArticulationHarness, t::Real)
+
+        ma = a.properties.ffi.added_fluid_volume * fluid_density;
+        
+        u_global_absolute = [0,0,0, flow_func(i.p, t)...];
+        u_local_absolute = inv(xlt(a.child_anchor)) * inv(i.X0') * u_global_absolute;
+        u_local_relative = i.v - u_local_absolute;
+
+        u_normal = u_local_relative[4];
+        u_tangential = u_local_relative[6];
+        theta_dot = i.V[2];
+        curvature = 1 / (a.length / i.q[1]);
+        
+        # (-2theta_dot*u_tangential) + 
+        force = - ma * ((curvature*((u_tangential^2)-0.5(u_normal^2)))) * i.X0[2,1:3];
+
+        return ifelse(i.q[1] == 0, [0,0,0], force);
+    end
+    return ExternalForce(f_ma_elongated);
 end

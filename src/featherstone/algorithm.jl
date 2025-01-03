@@ -3,7 +3,7 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
         generalized_state::Vector{<: Real}, time::Real,
         force::AbstractExternalForce, torque::AbstractInternalTorque)
 
-    return algorithm(articulated_body, StateHarness(articulated_body), generalized_state, time, force, torque);
+    return algorithm(articulated_body, StateHarness(Float64, articulated_body), generalized_state, time, force, torque);
 end
 function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticulatedBody,
     harness::StateHarness, generalized_state::Vector{<: Real}, time::Real,
@@ -48,8 +48,11 @@ function aba_pass2!(
     end
     Ia = i.IA - (i.U * i.D⁻¹ * (i.U)');
     pa = i.pA + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
+    # println("EABM - i.Xλ")
+    # display(i.Xλ)
+    # readline()
 
-    iλ.IA += i.λX⁻ᵀ * Ia * i.λX;
+    iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
     iλ.pA += i.λX⁻ᵀ * pa;
     return
 end

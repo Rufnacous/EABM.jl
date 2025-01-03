@@ -3,9 +3,9 @@ module EABM
     using LinearAlgebra;
     import Base.+;
     import Printf.@sprintf;
-    import DifferentialEquations.ODEProblem, DifferentialEquations.solve, DifferentialEquations.SSPRK22, DifferentialEquations.TRBDF2;
+    import DifferentialEquations.ODEProblem, DifferentialEquations.solve, DifferentialEquations.SSPRK22, DifferentialEquations.TRBDF2, DifferentialEquations.DiscreteCallback;
     import ForwardDiff.Dual, ForwardDiff.jacobian;
-    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!;
+    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!, Plots.cgrad;
 
     include("featherstone/types.jl");
     include("featherstone/common_geometry.jl");
@@ -34,33 +34,33 @@ module EABM
     include("fluids/added_mass.jl");
 
     export frequencies, static_solution, simulate;
-    export NPendulum, Rod;
+    export Rod, FluidborneRod, RotaryJoint;
+    export force_none, torque_elastic, force_drag;
+    export dof, n_bodies, get_positio;
 
-    function test(;T=10, dt_modify=0.5, n = 2, flowvel =0.1)
-        length = 0.5; radius = 0.01; density = 10; stiffness = 1e6;
+    function test(;dt_modify=0.5, n = 2, T=8)
+        rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
 
-        body = FluidborneRod(length, radius, density, stiffness, n, RotaryJoint(:x));
+        body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:x));
 
         fluid_density = 1000;
-        flow_func = (xyz, t) -> ([0,flowvel, 0] .* sin(50pi * t)) * (1 - cos(pi * max(0, min(t, 0.5T)) / (0.5T)));
-        force = force_drag(fluid_density, flow_func);
-
-        # force_gravity(downwards=[0,1,0]); # force_none();
-
-        torque = torque_elastic(); #+ torque_damping(c=0.01);
-
-        freqs, modes = frequencies(body, force, torque,
+        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.93, 0.3, 0.5T);
+        force = force_drag(fluid_density, flow_func) + force_skin_friction(fluid_density, flow_func) + 
+            force_gravity() + force_buoyancy(fluid_density) + force_virtual_buoyancy(fluid_density, flow_func) + 
+            force_further_added_mass_for_elongated_bodies(fluid_density, flow_func);
+        torque = torque_elastic();
+        
+        predicted_freqs, modes = frequencies(body, force_none(), torque,
             dynamics_algorithm = featherstones_with_added_mass(fluid_density, flow_func)
-            );
-        println(freqs);
-        # display(modes);
+        );
+        println("Predicted frequencies =   ",predicted_freqs[end-1:end] );
 
         iq = zeros(body);
-        # iq[1] = 0.1;
 
         sol = simulate(body, force, torque, T,
             initcond = iq, dt_modify = dt_modify,
-            dynamics_algorithm = featherstones_with_added_mass(fluid_density, flow_func)
+            dynamics_algorithm = featherstones_with_added_mass(fluid_density, flow_func),
+            integrator=:stable, checkpoints = collect(LinRange(0,1,101))
             );
 
 
@@ -68,11 +68,15 @@ module EABM
         plot(sol, idxs=1:n);
         print(" plotted sol. "); readline();
 
-        plot([],[],label="", xlims=(-0.25,0.25), ylims=(0,0.5));
-        for t in LinRange(0.5T, T, 20)[1:end-1]
+        cols = cgrad(:roma);
+
+        plot([],[],label="", xlims=(-0.125,0.125), ylims=(0,0.25));
+        ts = LinRange(sol.t[end] - 2, sol.t[end], 50); #[2:end];
+        for ti in eachindex(ts)
+            t = ts[ti];
             pos = get_position(body, sol(t));
-            
-            plot!(pos[2,:], pos[3,:], label="", color=:black)
+            plot!(pos[2,:], pos[3,:], label="", color=cols[ti  / length(ts)])
+            readline()
         end
 
 
@@ -80,6 +84,61 @@ module EABM
 
     end
 
+    
+function asymmetric_wave_profile(aw, 𝜔, k, h, ramptime)
+    function wave_velocity(pos, t)
+        z = pos[3];
+        x = pos[2];
+
+        U_A_M = [ 0.0694  0.1175  0.0762  0.0414];
+        U_A_C = [ 0.1582  0.0462  0.0075  0.0001];
+        U_P   = [-1.5072 -2.3098 -2.7410  1.2825];
+        W_A_M = [ 0.2950  0.1520  0.0887  0.0116];
+        W_A_C = [ 0.0129  0.0118  0.0032  0.0014];
+        W_P   = [ 0.1719 -0.5177 -1.3489 -1.2099];
+
+        U_A = U_A_M*z + U_A_C;
+        W_A = W_A_M*z + W_A_C;
+
+        U = 0; W = 0;
+        for harmonic = 1:4
+            U += U_A[harmonic] * cos(pi*harmonic*(t) + U_P[harmonic] - harmonic*k*x);
+            W += W_A[harmonic] * cos(pi*harmonic*(t) + W_P[harmonic] - harmonic*k*x);
+        end
+
+        if t < 0
+            U = 0;
+            W = 0;
+        elseif t < ramptime
+            U *= (1-cos(t*pi/ramptime))/2;
+            W *= (1-cos(t*pi/ramptime))/2;
+        end
+        wave_vel = [0, U, W];
+
+        return wave_vel;
+    end
+    return wave_velocity
+end
+
+
+    function linear_wave_profile(aw, 𝜔, k, h, ramptime)
+        function wave_velocity(pos, t)
+            z = pos[3];
+            x = pos[1];
+    
+            U = aw * 𝜔 * (cosh(k*z)/sinh(k*h)) * cos.(k*x .- 𝜔*t);
+            W = aw * 𝜔 * (sinh(k*z)/sinh(k*h)) * sin.(k*x .- 𝜔*t);
+    
+            if t < ramptime
+                wave_vel = [0, U, W] .* (0.5-0.5cos(t*pi/ramptime));
+            else
+                wave_vel = [0, U, W] ;
+            end
+    
+            return wave_vel;
+        end
+        return wave_velocity
+    end
     
 
     function test_branched(;T=10, dt_modify=0.5, n = 2, flowvel =0.1)

@@ -2,6 +2,9 @@
 function cylinder_second_moment_area(radius)
     return pi * (radius ^ 4) / 4;
 end
+function rectangular_beam_second_moment_area(width, thickness)
+    return [width*thickness*thickness*thickness/12, thickness*thickness*thickness*width/12, nothing];
+end
 
 RodArticulation(
     number::Integer, next_free_state_index::Integer, joint::JointType,

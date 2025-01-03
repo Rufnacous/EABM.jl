@@ -4,7 +4,7 @@ function inertia_matrix_about_origin(mass::Real, inertia_matrix_about_center::Ma
 end
 function inertia_matrix_about_point(mass::Real, inertia_matrix_about_center::Matrix{<:Real}, OC::Vector{<:Real}, OP::Vector{<:Real})
     m = mass; PC = OC - OP;
-    Ic = m * inertia_matrix_about_center;
+    Ic = inertia_matrix_about_center;
     Itl = Ic + m*𝞦(PC)*𝞦(PC)';   
     Itr = m*𝞦(PC);
     Ibl = Itr';
@@ -30,9 +30,18 @@ function cylinder_inertia(mass::Real, length::Real, radius::Real)
 end
 function cylinder_mass_and_inertia(density::Real, length::Real, radius::Real)
     mass = density * length * pi * radius^2;
-    inertia_xy = mass*(3*(radius^2) + (length^2))/12; inertia_z = mass * (radius^2) / 12;
-    inertia = [inertia_xy 0 0; 0 inertia_xy 0; 0 0 inertia_z];
-    return (mass, inertia)
+    return (mass, cylinder_inertia(mass, length, radius))
+end
+function rectangular_beam_inertia(mass::Real, length::Real, width::Real, thickness::Real)
+    inertia_x = mass * ((length^2) + (width^2)) / 12;
+    inertia_y = mass * ((length^2) + (thickness^2)) / 12;
+    inertia_z = mass * ((thickness^2) + (width^2)) / 12;
+    inertia = [inertia_x 0 0; 0 inertia_y 0; 0 0 inertia_z];
+    return inertia;
+end
+function rectangular_beam_mass_and_inertia(density::Real, length::Real, width::Real, thickness::Real)
+    mass = density * length * width * thickness;
+    return (mass, rectangular_beam_inertia(mass, length, width, thickness))
 end
 
 
