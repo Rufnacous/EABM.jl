@@ -46,3 +46,12 @@ function refresh_all_indices!(a::Articulation, next_indices::Tuple{<: Integer, <
     a.state_indices = next_state_index:(next_state_index + dof(a) - 1); next_state_index += dof(a);
     return (next_body_number, next_state_index);
 end
+
+
+function even_discretization(total_length::Number, i::Integer, n::Integer)
+    return total_length / n;
+end
+function gauss_lobatto_discretization(total_length::Number, i::Integer, n::Integer)
+    delta_s = (1-cos(pi*i/(2*n))) - (1-cos(pi*(i-1)/(2*n)));
+    return total_length * delta_s;
+end

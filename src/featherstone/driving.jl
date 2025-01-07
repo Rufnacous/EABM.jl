@@ -1,7 +1,6 @@
 
 function (force::ExternalForce)(a::Articulation, i::ArticulationHarness, t::Real)
-    f_com = i.X0 * [0,0,0,force.force(a,i,t)...];
-    return xlt(a.mass_center)' * f_com;
+    return xlt(a.mass_center)' * i.X0 * [0,0,0,force.force(a,i,t)...];
 end
 (torque::InternalTorque)(args...) = torque.torque(args...);
 

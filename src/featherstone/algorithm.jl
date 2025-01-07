@@ -15,9 +15,9 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
         if (action == :return)
             return step(articulated_body, harness);
         elseif (action == :forward)
-            forward_recurse!(articulated_body, step, harness, time, force, torque);
+            forward_recurse_iterative!(articulated_body, step, harness, time, force, torque);
         elseif (action == :backward)
-            backward_recurse!(articulated_body, step, harness, time, force, torque);
+            backward_recurse_iterative!(articulated_body, step, harness, time, force, torque);
         end
     end
     
@@ -48,9 +48,6 @@ function aba_pass2!(
     end
     Ia = i.IA - (i.U * i.D⁻¹ * (i.U)');
     pa = i.pA + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
-    # println("EABM - i.Xλ")
-    # display(i.Xλ)
-    # readline()
 
     iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
     iλ.pA += i.λX⁻ᵀ * pa;

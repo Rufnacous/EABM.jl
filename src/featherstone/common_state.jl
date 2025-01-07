@@ -1,7 +1,7 @@
 
 function get_acceleration(body::AbstractArticulatedBody, harness::StateHarness)
     accel = zeros(typeof(harness.articulation_states[end].q_d²t).parameters[1], dof(body));
-    forward_recurse!(body, get_acceleration, accel, harness);
+    forward_recurse_iterative!(body, get_acceleration, accel, harness);
     return accel;
 end
 function get_acceleration(a::Articulation, accel::Vector{<:Real}, harness::StateHarness)
@@ -44,7 +44,7 @@ function Base.zeros(articulated_body::AbstractArticulatedBody)
 end
 
 function set_state!(articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
-    forward_recurse!(articulated_body, set_state!, articulated_body, harness, generalized_state);
+    forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state);
 end
 function set_state!(a::Articulation, articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
     set_state!(a, harness, generalized_state[a.state_indices], generalized_state[dof(articulated_body) .+ a.state_indices]);
@@ -73,9 +73,14 @@ function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, 
     OT = harness[a].S * harness[a].q + [0,0,0, (a.child_anchor )...];  
 
 
+    # harness[a].p = harness[λ(a)].p + 
+    #     (inv(a.pregeometry_transform * harness[λ(a)].X0) * [0,0,0,a.pregeometry...])[4:6] +
+    #     (inv(harness[a].X0) * ( [0,0,0,OT[4:6]...] ))[4:6];
+
+    X0_rt = harness[λ(a)].X0[4:6,4:6]';
     harness[a].p = harness[λ(a)].p + 
-        (inv(a.pregeometry_transform * harness[λ(a)].X0) * [0,0,0,a.pregeometry...])[4:6] +
-        (inv(harness[a].X0) * ( [0,0,0,OT[4:6]...] ))[4:6];
+        (X0_rt * a.pregeometry_transform[4:6,4:6]' * a.pregeometry) + 
+        (X0_rt * OT[4:6]);
 
     harness[a].V = harness[a].X0' * (xlt(OT[4:6]) * harness[a].v)
 end
@@ -94,7 +99,7 @@ function StateHarness(numeric_type::DataType, body::AbstractArticulatedBody)
     a_harnesses[1].p = [0,0,0];
     a_harnesses[1].X0 = Matrix{Float64}(I(6));
 
-    forward_recurse!(body, push_articulation_harness!, numeric_type, a_harnesses)
+    forward_recurse_iterative!(body, push_articulation_harness!, numeric_type, a_harnesses)
 
     return StateHarness(a_harnesses)
 end

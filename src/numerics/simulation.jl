@@ -6,17 +6,17 @@
 # Multiple dispatch of vector_cauchy_problem then allows us to use the appropriate harness.
 # When introduced, this step represented a 20% speed-up in integrations.
 
-function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, time::Real;
+function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, simtime::Real;
     initcond::Vector{<:Real}=zeros(body), dt_modify::Real=0.5, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm,
     integrator::Symbol=:approx, checkpoints::Vector{<:Real}=zeros(0))
 
     float_state_harness = StateHarness(Float64, body);
     dual_state_harness = StateHarness(Float64, body);
     
-    checkpoints = checkpoints .* time;
+    checkpoints = checkpoints .* simtime;
     
     prob = ODEProblem(
-        make_vector_cauchy_problem(dynamics_algorithm), initcond, (0, time), (body, float_state_harness, dual_state_harness, force, torque),
+        make_vector_cauchy_problem(dynamics_algorithm), initcond, (0, simtime), (body, float_state_harness, dual_state_harness, force, torque),
         tstops=checkpoints);
 
     freqs, shapes = frequencies(body, force, torque, dynamics_algorithm=dynamics_algorithm);

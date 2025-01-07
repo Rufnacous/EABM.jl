@@ -10,6 +10,7 @@ mutable struct StandardFFIProperties <: FFIProperties
     added_fluid_volume::Number
     added_inertia::Matrix{<: Number}
     fluid_freedom_subspace::Matrix{<: Number}
+    virtual_buoyancy::Matrix{<: Number}
 end
 
 
