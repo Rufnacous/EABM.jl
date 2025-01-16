@@ -1,9 +1,10 @@
 
 function cylinder_second_moment_area(radius)
-    return pi * (radius ^ 4) / 4;
+    Ix_Iy = pi * (radius ^ 4) / 4;
+    return [Ix_Iy 0 0; 0 Ix_Iy 0 ; 0 0 0];
 end
 function rectangular_beam_second_moment_area(width, thickness)
-    return [width*thickness*thickness*thickness/12, thickness*thickness*thickness*width/12, nothing];
+    return [width*width*width*thickness/12 0 0; 0 thickness*thickness*thickness*width/12 0; 0 0 0];
 end
 
 RodArticulation(
@@ -13,7 +14,7 @@ RodArticulation(
 ) = Articulation(
     number, next_free_state_index, joint, parent, length,
     cylinder_mass_and_inertia(density, length, radius)..., curvature, [0,0,length], pregeometry, [0,0,0.5length],
-    FilamentProperties(AxisymmetricElasticProperties(stiffness * cylinder_second_moment_area(radius) / length))
+    FilamentProperties(LinearElasticProperties(stiffness * cylinder_second_moment_area(radius) / length))
 );
 
 

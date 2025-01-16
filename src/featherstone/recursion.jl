@@ -7,9 +7,9 @@ function forward_recurse(a::Articulation, f::Function, retrace::Bool, state, arg
     state = f(a, state, args...; kwargs...);
     for child in a.children
         state = forward_recurse(child, f, retrace, state, args...; kwargs...);
-    end
-    if retrace
-        state = f(a, state, args...; kwargs...);
+        if retrace
+            state = f(a, state, args...; kwargs...);
+        end
     end
     return state;
 end
@@ -22,9 +22,9 @@ function forward_recurse!(a::Articulation, f::Function, retrace::Bool, args...; 
     f(a, args...; kwargs...);
     for child in a.children
         forward_recurse!(child, f, retrace, args...; kwargs...)
-    end
-    if retrace
-        f(a, args...; kwargs...);
+        if retrace
+            f(a, args...; kwargs...);
+        end
     end
 end
 

@@ -28,3 +28,9 @@ Articulation(
 function get_articulation(body::AbstractArticulatedBody, by_number::Number)
     return forward_recurse(body, (candidate::Articulation, storage::Union{Nothing, Articulation}) -> ifelse(candidate.body_number == by_number, candidate, storage), nothing );
 end
+
+function get_tips(body::AbstractArticulatedBody)
+    tips::Array{Articulation} = [];
+    forward_recurse!(body, (candidate::Articulation, storage::Array{Articulation}) -> append!(storage, ifelse(length(candidate.children)==0,[candidate],[])), tips);
+    return tips;
+end
