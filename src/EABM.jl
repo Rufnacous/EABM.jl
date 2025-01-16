@@ -5,7 +5,8 @@ module EABM
     import Printf.@sprintf;
     import DifferentialEquations.ODEProblem, DifferentialEquations.solve, DifferentialEquations.SSPRK22, DifferentialEquations.TRBDF2, DifferentialEquations.DiscreteCallback;
     import ForwardDiff.Dual, ForwardDiff.jacobian;
-    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!, Plots.cgrad;
+    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!, Plots.cgrad, Plots.savefig;
+    using CSV, Tables;
 
     include("featherstone/types.jl");
     include("featherstone/common_geometry.jl");
@@ -81,48 +82,111 @@ module EABM
         end
 
 
+
         return;
 
     end
 
+    function SpeedTestRod(rod_length::Number, rod_radius::Number, rod_density::Number, rod_stiffness::Number, breadth::Integer, depth::Integer, joints::JointType)
+        a0 = articulation_zero();
+
+        next_free_state_index = 1;
+        next_body = 1;
+        a1 = RodArticulation(next_body, next_free_state_index, joints, a0, rod_length/depth, rod_radius, rod_density, rod_stiffness);
+        next_free_state_index += dof(a1); next_body += 1;
+        push!(a0.children, a1); a1.parent = a0;
     
-    function test_speed(;n_repeats = 50, ns = Int64.(floor.(10 .^ LinRange(0,3, 25))) )
-        rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
-
         
-        fluid_density = 1000;
-        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.93, 0.3, 20);
-        force = force_none();
-        # force = force_drag(fluid_density, flow_func) + force_skin_friction(fluid_density, flow_func) + 
-        #     force_gravity() + force_buoyancy(fluid_density) +
-        #     force_further_added_mass_for_elongated_bodies(fluid_density, flow_func);
-        torque = torque_elastic() + torque_damping() + InternalTorque((a::Articulation, i::ArticulationHarness, t::Real) -> ifelse(a.body_number==1,[3.4*sin(1.2*t)],[0]));
-        alg = featherstones_with_added_mass_and_virtual_buoyancy(fluid_density, flow_func);
-        alg = featherstones_algorithm;
+        for bi = 1:breadth
+            alast = a1;
+            for di = 1:depth
+                anext = RodArticulation(next_body, next_free_state_index, joints, alast, rod_length/depth, rod_radius, rod_density, rod_stiffness)
+                next_free_state_index += dof(anext); next_body += 1;
 
-        ts = zeros(length(ns));
-        
-
-        for i in eachindex(ns)
-            print(i,": ",ns[i]," ")
-            body = FluidborneStrip(rod_length, width, thickness, density, stiffness, ns[i], RotaryJoint(:x),
-                discretization = gauss_lobatto_discretization);
-
-            s = StateHarness(Float64, body); u = zeros(body);
-            t = time()
-            for repeat in 1:n_repeats
-                alg(body, s, u, 0, force, torque);
+                push!(alast.children, anext); anext.parent = alast;
+                alast = anext;
             end
-            ts[i] = (time() - t) / n_repeats;
-            println(" ",ts[i])
         end
 
-        default(show=true);
-        # scatter(log.(10, ns), log.(10, 1 ./ ts))
-        q =  1 ./ (ts ./ ns);
-        scatter(log.(10, ns), q/1000, xlabel="log10 n", ylabel="aba speed kHz") #, ylims=(1500,3500))
-        println((sum(q[end-9:end]) / 10)/1000, "kHz")
+        body = Rod(a0, -1);
+        dof(body, force=true);
+    
+        return body;
+    end
+
+    
+    function test_speed(;samples=10,repeatfor = 10.0, repeatminimum=20, ds = Int64.(floor.(10 .^ LinRange(0,2, 5))), bs = Int64.(floor.(10 .^ LinRange(0,2, 6))))
+        rod_length = 0.2; radius = 0.0019; density = 670; stiffness = 0.5e6;
         
+        force = force_none();
+        torque = torque_elastic() + torque_damping() + InternalTorque((a::Articulation, i::ArticulationHarness, t::Real) -> ifelse(a.body_number==1,[3.4*sin(1.2*t)],[0]));
+        alg = featherstones_algorithm;
+
+        plot([],[],label="");
+
+        dataout_mean = zeros(length(ds)+1, length(bs)+1);
+        dataout_stdev = zeros(length(ds)+1, length(bs)+1);
+        datasamples = zeros(length(ds), length(bs), samples);
+
+        for bi in eachindex(bs)
+            print(bi, " ")
+
+            ts = zeros(length(ds));
+
+            for di in eachindex(ds)
+                print(di)
+                body = SpeedTestRod(rod_length, radius, density, stiffness, bs[bi], ds[di], RotaryJoint(:x));
+
+                s = StateHarness(Float64, body); u = zeros(body);
+
+                for si in 1:samples
+                    t = time()
+                    for repeat in 1:repeatminimum
+                    # n_repeats = 0; repeatedfor = 0;
+                    # while (n_repeats < repeatminimum) #(repeatedfor < repeatfor) ||
+                        alg(body, s, u, 0, force, torque);
+    #                    repeatedfor = time() - t; n_repeats += 1;
+                    end
+                    repeatedfor = time() - t;
+                    ts[di] = repeatedfor / repeatminimum;
+                    # dataout[1+di, 1+bi] = ts[di];
+                    datasamples[di,bi, si] = ts[di];
+                end
+
+                dataout_mean[1+di, 1+bi] = sum(datasamples[di,bi,:]) / samples;
+
+                dataout_stdev[1+di, 1+bi] = sqrt(sum((datasamples[di,bi,:] .- dataout_mean[1+di, 1+bi]) .^ 2) / samples);
+
+                print(@sprintf(" (%.2f,%.2f) ",1000*dataout_mean[1+di, 1+bi], 1000*dataout_stdev[1+di, 1+bi]))
+                
+                # println(" ",ts[di])
+
+                dataout_mean[1+di, 1] = ds[di];
+                dataout_stdev[1+di, 1] = ds[di];
+
+            end
+            dataout_mean[1, 1+bi] = bs[bi];
+            dataout_stdev[1, 1+bi] = bs[bi];
+
+            ns = ds .* bs[bi];
+
+            q =  1 ./ (ts ./ ns);
+            scatter!(log.(10, ns), log.(10, q), xlabel="log10 n", ylabel="log10 aba speed hz", label=@sprintf("b%d", bs[bi])) #, ylims=(1500,3500))
+            println()
+
+        end
+
+        
+
+        
+        f = open("speedtest_mean.csv","w+");
+        CSV.write(f, Tables.table(dataout_mean));
+        close(f)
+        f = open("speedtest_stdv.csv","w+");
+        CSV.write(f, Tables.table(dataout_stdev));
+        close(f)
+
+        savefig("khz.png")
         return;
 
     end
