@@ -18,25 +18,106 @@ end
 struct ArticulationZeroJoint <: JointType end
 dof(j::ArticulationZeroJoint) = 0;
 
+struct FixedJoint <: JointType
+end
+dof(j::FixedJoint) = 0;
+function get_transformations(j::FixedJoint, q::Vector{<: Real}, qdt::Vector{<: Real})
+    return (
+            zeros(6,0),
+            zeros(6,0),
+            [1 0 0; 0 1 0; 0 0 1],
+            [0,0,0]
+        )
+end
+
+
+
 struct RotaryJoint <: JointType
     axis::Symbol
 end
 dof(j::RotaryJoint) = 1;
 function get_transformations(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: Real})
-    c1 = cos(q[1]); s1 = sin(q[1]);
-    return (
-        Matrix([1 0 0 0 0 0]'),
-        Matrix([0 0 0 0 0 0]'),
-        [1 0 0; 0 c1 s1; 0 -s1 c1],
-        [0,0,0]
-    )
-    # if j.axis == :x
-    #     return (
-    #         Matrix([1 0 0 0 0 0]'),
-    #         Matrix([0 0 0 0 0 0]'),    # Ṡ
-    #         [ 1   0   0;
-    #           0  c1  s1;
-    #           0 -s1  c1],              # E
-    #         [0,0,0]                    # p
-    #     )
+    if j.axis == :x
+        return (
+            Matrix([1 0 0 0 0 0]'),
+            Matrix([0 0 0 0 0 0]'),
+            rotate_x(q[1]),
+            [0,0,0]
+        )
+    elseif j.axis ==:y
+        return (
+            Matrix([0 1 0 0 0 0]'),
+            Matrix([0 0 0 0 0 0]'),
+            rotate_y(q[1]),
+            [0,0,0]
+        )
+    else
+        return (
+            Matrix([0 0 1 0 0 0]'),
+            Matrix([0 0 0 0 0 0]'),
+            rotate_z(q[1]),
+            [0,0,0]
+        )
+    end
+end
+
+
+
+struct EulerXYJoint <: JointType end
+dof(j::EulerXYJoint) = 2;
+function get_transformations(j::EulerXYJoint, q::Vector{<: Real}, qdt::Vector{<: Real})
+    c1 = cos(0); s1 = sin(0); c2 = cos(q[1]); s2 = sin(q[1]); c3 = cos(q[2]); s3 = sin(q[2]);
+    E = [
+        (c2)    (0)   (-s2)   ;
+        (s2*s3) (c3)  (c2*s3) ;
+        (s2*c3) (-s3) (c2*c3) ];
+    S = [
+        0     1;
+        c3    0;
+        -s3   0;
+        0     0;
+        0     0;
+        0     0
+    ]
+    Ṡ = [
+        0               0;
+        -s3*qdt[2]       0;
+        -c3*qdt[2]       0;
+        0               0;
+        0               0;
+        0               0
+    ]
+    p = [0,0,0];
+    return (S, Ṡ, E, p);
+end
+
+struct BendingJoint <: JointType end
+dof(j::BendingJoint) = 2;
+function get_transformations(j::BendingJoint, q::Vector{<: Real}, qdt::Vector{<: Real})
+
+    cy = cos(q[1]); sy = sin(q[1]); cz = cos(q[2]); sz = sin(q[2]);
+    qdtz = qdt[2];
+
+    Q = get_rotation_b_is_ez([sy*cz, -sz, cy*cz]);
+    E = Q';
+
+    S = [ 
+        0     1;
+        cz    0;
+        0     0;
+        0     0;
+        0     0;
+        0     0
+    ]
+    Ṡ = [
+        0               0;
+        -sz*qdtz        0;
+        0               0;
+        0               0;
+        0               0;
+        0               0
+    ]
+    p = [0,0,0];
+    return (S, Ṡ, E, p);
+
 end

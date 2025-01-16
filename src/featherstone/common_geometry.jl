@@ -43,6 +43,15 @@ function rectangular_beam_mass_and_inertia(density::Real, length::Real, width::R
     mass = density * length * width * thickness;
     return (mass, rectangular_beam_inertia(mass, length, width, thickness))
 end
+function rectangular_beam_lumped_mass_and_inertia(density::Real, length::Real, width::Real, thickness::Real)
+    mass = density * length * width * thickness;
+    return (mass, lumped_mass_inertia(mass, thickness))
+end
+function lumped_mass_inertia(mass::Real, radius::Real)
+    Ixyz = 0.4mass * (radius ^ 2);
+
+    return [Ixyz 0 0; 0 Ixyz 0; 0 0 Ixyz];
+end
 
 
 
@@ -66,4 +75,21 @@ function rotate_z(theta::Number)
         c  s   0;
         -s  c   0;
         0   0   1]
+end
+function get_rotation(a::Vector{<: Number}, b::Vector{<: Number})
+    # b = Ra
+    # https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
+    v = cross(a,b);
+    c = dot(a,b);
+
+    𝞦v = 𝞦(v);
+    return I(3) + 𝞦v + 𝞦v*𝞦v/(1+c);
+end
+
+
+function get_rotation_b_is_ez(a::Vector{<: Number})
+    v = [a[2], -a[1], 0];
+    c = a[3];
+    𝞦v = 𝞦(v);
+    return I(3) + 𝞦v + 𝞦v*𝞦v/(1+c);
 end

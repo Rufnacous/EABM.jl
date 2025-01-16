@@ -35,6 +35,14 @@ function join_bodies!(parent_body::AbstractArticulatedBody, parent_articulation:
     refresh_all_indices!(parent_body);
 end
 
+function attach_to_tip!(parent_body::AbstractArticulatedBody, child_body::AbstractArticulatedBody)
+    tips = get_tips(parent_body);
+    if length(tips) != 1
+        throw(ExceptionError("attach_to_tip only implemented for single-tip structures"))
+    end
+    join_bodies!(parent_body, tips[1], child_body)
+end
+
 function refresh_all_indices!(body::AbstractArticulatedBody)
     forward_recurse(body, refresh_all_indices!, (1, 1));
     dof(body, force=true);
@@ -52,6 +60,6 @@ function even_discretization(total_length::Number, i::Integer, n::Integer)
     return total_length / n;
 end
 function gauss_lobatto_discretization(total_length::Number, i::Integer, n::Integer)
-    delta_s = (1-cos(pi*i/(2*n))) - (1-cos(pi*(i-1)/(2*n)));
+    delta_s = 0.5((1-cos(pi*i/n)) - (1-cos(pi*(i-1)/n)));
     return total_length * delta_s;
 end

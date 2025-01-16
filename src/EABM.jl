@@ -5,7 +5,7 @@ module EABM
     import Printf.@sprintf;
     import DifferentialEquations.ODEProblem, DifferentialEquations.solve, DifferentialEquations.SSPRK22, DifferentialEquations.TRBDF2, DifferentialEquations.DiscreteCallback;
     import ForwardDiff.Dual, ForwardDiff.jacobian;
-    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!, Plots.cgrad;
+    import Plots.default, Plots.plot, Plots.plot!, Plots.scatter, Plots.scatter!, Plots.cgrad, Plots.palette;
 
     include("featherstone/types.jl");
     include("featherstone/common_geometry.jl");
@@ -33,22 +33,86 @@ module EABM
     include("fluids/basic_forces.jl");
     include("fluids/added_mass.jl");
 
-    export frequencies, static_solution, simulate;
-    export Rod, FluidborneRod, RotaryJoint;
+    export frequencies, static_posture, simulate;
+    export Rod, FluidborneRod, RotaryJoint, BendingJoint;
     export force_none, torque_elastic, force_drag;
-    export dof, n_bodies, get_positio;
+    export dof, n_bodies, get_position;
+
+    function test_joint()
+        bending_body = Rod(1, 0.005, 5000.0, 1e6, 1, BendingJoint());
+        euler_body = Rod(1, 0.005, 5000.0, 1e6, 1, EulerXYJoint());
+        
+        torque = torque_elastic();
+        
+        angles = LinRange(0, 2pi, 72+1);
+        xys = zeros(2, 2, length(angles));
+        
+        default(show=true);
+        plot([],[],label="");
+        
+        strengths = 10 .^ LinRange(-4, -2, 5)
+
+        for strengths_i in eachindex(strengths)
+            strength = strengths[strengths_i];
+            for angle_i in eachindex(angles)
+                angle = angles[angle_i]
+                
+                force = ExternalForce((args...; kwargs...) -> strength * rotate_z(angle) * [1,0,0]);
+
+                static_result = static_posture(bending_body, force, torque);
+                pos = get_position(bending_body, static_result);
+                xys[1, :, angle_i] .= pos[1:2, end];
+
+                static_result = static_posture(euler_body, force, torque);
+                pos = get_position(euler_body, static_result);
+                xys[2, :, angle_i] .= pos[1:2, end];
+            end
+
+            plot!(xys[1, 1, :], xys[1, 2, :], label=ifelse(strengths_i==1,"Bending",""), color=palette(:tab10)[1])
+            plot!(xys[2, 1, :], xys[2, 2, :], label=ifelse(strengths_i==1,"Euler XY",""), color=palette(:tab10)[2],
+                aspect_ratio=:equal)
+        end
+
+
+        
+        stateharness = StateHarness(Float64, bending_body);
+        now = time();
+        for repeat = 1:10000000
+            torque(bending_body.articulation_zero.children[1], stateharness[bending_body.articulation_zero.children[1]], 0);
+        end
+        elapsed = time() - now;
+        println(elapsed)
+        
+        stateharness = StateHarness(Float64, euler_body);
+        now = time();
+        for repeat = 1:10000000
+            torque(euler_body.articulation_zero.children[1], stateharness[euler_body.articulation_zero.children[1]], 0);
+        end
+        elapsed = time() - now;
+        println(elapsed)
+
+    end
+
 
     function test(;dt_modify=0.5, n = 2, T=8)
+        # changes so far:
+        #  - changed EABM to lump masses
+        #  - changed Filamentous to lump velocity measurements
+
         rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
 
-        body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:x),
+        body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:y),
             discretization = gauss_lobatto_discretization);
 
         fluid_density = 1000;
-        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.93, 0.3, 0.5T);
-        force = force_drag(fluid_density, flow_func) + force_skin_friction(fluid_density, flow_func) + 
-            force_gravity() + force_buoyancy(fluid_density) +
-            force_further_added_mass_for_elongated_bodies(fluid_density, flow_func);
+        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.9287, 0.3, T-6);
+        
+        force = force_buoyancy(fluid_density) + 
+            force_drag(fluid_density, flow_func) +
+            force_skin_friction(fluid_density, flow_func) + 
+            force_gravity() + 
+            force_further_added_mass_for_elongated_bodies(fluid_density, flow_func)
+
         torque = torque_elastic();
         
         predicted_freqs, modes = frequencies(body, force_none(), torque,
@@ -58,10 +122,11 @@ module EABM
 
         iq = zeros(body);
 
+
         sol = simulate(body, force, torque, T,
             initcond = iq, dt_modify = dt_modify,
             dynamics_algorithm = featherstones_with_added_mass_and_virtual_buoyancy(fluid_density, flow_func),
-            integrator=:stable, checkpoints = collect(LinRange(0,1,101))
+            integrator=:stable, checkpoints = collect(LinRange(0,1,21))
             );
 
 
@@ -72,11 +137,11 @@ module EABM
         cols = cgrad(:roma);
 
         plot([],[],label="", xlims=(-0.125,0.125), ylims=(0,0.25));
-        ts = LinRange(sol.t[end] - 2, sol.t[end], 50); #[2:end];
+        ts = LinRange(sol.t[end] - 2, sol.t[end], 50);
         for ti in eachindex(ts)
             t = ts[ti];
             pos = get_position(body, sol(t));
-            plot!(pos[2,:], pos[3,:], label="", color=cols[ti  / length(ts)])
+            plot!(-pos[1,:], pos[3,:], label="", color=cols[ti  / length(ts)],aspect_ratio=:equal)
             readline()
         end
 
@@ -85,13 +150,69 @@ module EABM
 
     end
 
+    function asymmetric_wave_profile(aw, 𝜔, k, h, ramptime)
+        function wave_velocity(pos, t)
+            z = pos[3];
+            x = pos[1];
+
+            U_A_M = [ 0.0694  0.1175  0.0762  0.0414];
+            U_A_C = [ 0.1582  0.0462  0.0075  0.0001];
+            U_P   = [-1.5072 -2.3098 -2.7410  1.2825];
+            W_A_M = [ 0.2950  0.1520  0.0887  0.0116];
+            W_A_C = [ 0.0129  0.0118  0.0032  0.0014];
+            W_P   = [ 0.1719 -0.5177 -1.3489 -1.2099];
+
+            U_A = U_A_M*z + U_A_C;
+            W_A = W_A_M*z + W_A_C;
+
+            U = 0; W = 0;
+            for harmonic = 1:4
+                U += U_A[harmonic] * cos(pi*harmonic*(t) + U_P[harmonic] - harmonic*k*x);
+                W += W_A[harmonic] * cos(pi*harmonic*(t) + W_P[harmonic] - harmonic*k*x);
+            end
+
+            if t < 0
+                U = 0;
+                W = 0;
+            elseif t < ramptime
+                U *= (1-cos(t*pi/ramptime))/2;
+                W *= (1-cos(t*pi/ramptime))/2;
+            end
+            wave_vel = [U, 0, W];
+
+            return wave_vel;
+        end
+        return wave_velocity
+    end
+
+
+    function linear_wave_profile(aw, 𝜔, k, h, ramptime)
+        function wave_velocity(pos, t)
+            z = pos[3];
+            x = pos[1];
+    
+            U = aw * 𝜔 * (cosh(k*z)/sinh(k*h)) * cos.(k*x .- 𝜔*t);
+            W = aw * 𝜔 * (sinh(k*z)/sinh(k*h)) * sin.(k*x .- 𝜔*t);
+    
+            if t < ramptime
+                wave_vel = [0, U, W] .* (0.5-0.5cos(t*pi/ramptime));
+            else
+                wave_vel = [0, U, W] ;
+            end
+    
+            return wave_vel;
+        end
+        return wave_velocity
+    end
+    
+
     
     function test_speed(;n_repeats = 50, ns = Int64.(floor.(10 .^ LinRange(0,3, 25))) )
         rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
 
         
         fluid_density = 1000;
-        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.93, 0.3, 20);
+        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.9287, 0.3, 20);
         force = force_none();
         # force = force_drag(fluid_density, flow_func) + force_skin_friction(fluid_density, flow_func) + 
         #     force_gravity() + force_buoyancy(fluid_density) +
@@ -127,62 +248,7 @@ module EABM
 
     end
         
-    function asymmetric_wave_profile(aw, 𝜔, k, h, ramptime)
-        function wave_velocity(pos, t)
-            z = pos[3];
-            x = pos[2];
-
-            U_A_M = [ 0.0694  0.1175  0.0762  0.0414];
-            U_A_C = [ 0.1582  0.0462  0.0075  0.0001];
-            U_P   = [-1.5072 -2.3098 -2.7410  1.2825];
-            W_A_M = [ 0.2950  0.1520  0.0887  0.0116];
-            W_A_C = [ 0.0129  0.0118  0.0032  0.0014];
-            W_P   = [ 0.1719 -0.5177 -1.3489 -1.2099];
-
-            U_A = U_A_M*z + U_A_C;
-            W_A = W_A_M*z + W_A_C;
-
-            U = 0; W = 0;
-            for harmonic = 1:4
-                U += U_A[harmonic] * cos(pi*harmonic*(t) + U_P[harmonic] - harmonic*k*x);
-                W += W_A[harmonic] * cos(pi*harmonic*(t) + W_P[harmonic] - harmonic*k*x);
-            end
-
-            if t < 0
-                U = 0;
-                W = 0;
-            elseif t < ramptime
-                U *= (1-cos(t*pi/ramptime))/2;
-                W *= (1-cos(t*pi/ramptime))/2;
-            end
-            wave_vel = [0, U, W];
-
-            return wave_vel;
-        end
-        return wave_velocity
-    end
-
-
-    function linear_wave_profile(aw, 𝜔, k, h, ramptime)
-        function wave_velocity(pos, t)
-            z = pos[3];
-            x = pos[1];
     
-            U = aw * 𝜔 * (cosh(k*z)/sinh(k*h)) * cos.(k*x .- 𝜔*t);
-            W = aw * 𝜔 * (sinh(k*z)/sinh(k*h)) * sin.(k*x .- 𝜔*t);
-    
-            if t < ramptime
-                wave_vel = [0, U, W] .* (0.5-0.5cos(t*pi/ramptime));
-            else
-                wave_vel = [0, U, W] ;
-            end
-    
-            return wave_vel;
-        end
-        return wave_velocity
-    end
-    
-
     function test_branched(;T=10, dt_modify=0.5, n = 2, flowvel =0.1)
         limb_length = 0.25; radius = 0.01; density = 10; stiffness = 1e6;
 
@@ -228,7 +294,7 @@ module EABM
         # plot([],[],[],label="") #, xlims=(-0.25,0.25), ylims=(0,0.5));
         for t in LinRange(0.5T, T, 100)[1:end-1]
             pos = get_position(body, sol(t), with_retrace=true);
-            plot( pos[2,:], pos[3,:], label="", color=:black, #pos[1,:],
+            plot( pos[1,:], pos[3,:], label="", color=:black, #pos[1,:],
             # xlims=(-0.25, 0.25), ylims=(-0.25, 0.25), zlims=(0, 0.5)
             );
             readline();

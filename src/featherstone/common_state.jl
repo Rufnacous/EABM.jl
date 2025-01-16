@@ -39,15 +39,19 @@ function push_position(a::Articulation, pos, harness::StateHarness)
 end
 
 
-function Base.zeros(articulated_body::AbstractArticulatedBody)
-    return zeros(2 * dof(articulated_body));
+function Base.zeros(articulated_body::AbstractArticulatedBody; no_derivatives::Bool=false)
+    return zeros(ifelse(no_derivatives,1,2) * dof(articulated_body));
 end
 
 function set_state!(articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
-    forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state);
+    forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state, length(generalized_state) == 2dof(articulated_body));
 end
-function set_state!(a::Articulation, articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
-    set_state!(a, harness, generalized_state[a.state_indices], generalized_state[dof(articulated_body) .+ a.state_indices]);
+function set_state!(a::Articulation, articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real}, includes_velocities::Bool)
+    if includes_velocities
+        set_state!(a, harness, generalized_state[a.state_indices], generalized_state[dof(articulated_body) .+ a.state_indices]);
+    else
+        set_state!(a, harness, generalized_state[a.state_indices], zeros(length(a.state_indices)));
+    end
 end
 
 function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, q_dt::Vector{<: Real})
@@ -77,10 +81,9 @@ function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, 
     #     (inv(a.pregeometry_transform * harness[λ(a)].X0) * [0,0,0,a.pregeometry...])[4:6] +
     #     (inv(harness[a].X0) * ( [0,0,0,OT[4:6]...] ))[4:6];
 
-    X0_rt = harness[λ(a)].X0[4:6,4:6]';
     harness[a].p = harness[λ(a)].p + 
-        (X0_rt * a.pregeometry_transform[4:6,4:6]' * a.pregeometry) + 
-        (X0_rt * OT[4:6]);
+        (harness[λ(a)].X0[4:6,4:6]' * a.pregeometry_transform[4:6,4:6]' * a.pregeometry) + 
+        (harness[a].X0[4:6,4:6]' * OT[4:6]);
 
     harness[a].V = harness[a].X0' * (xlt(OT[4:6]) * harness[a].v)
 end
@@ -136,3 +139,15 @@ ArticulationHarness( a::Articulation, numeric_type::DataType ) =
         zeros( numeric_type, 6 ),
         zeros( numeric_type, 6, 6 )
     );
+
+
+
+
+function get_torque(body::AbstractArticulatedBody, harness::StateHarness)
+    torques = zeros(typeof(harness.articulation_states[end].u).parameters[1], dof(body));
+    forward_recurse_iterative!(body, get_torque, torques, harness);
+    return torques;
+end
+function get_torque(a::Articulation, torques::Vector{<:Real}, harness::StateHarness)
+    torques[a.state_indices] = harness[a].u;
+end

@@ -7,7 +7,7 @@
 # When introduced, this step represented a 20% speed-up in integrations.
 
 function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, simtime::Real;
-    initcond::Vector{<:Real}=zeros(body), dt_modify::Real=0.5, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm,
+    initcond::Vector{<:Real}=zeros(body), dt_modify::Real=1.0, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm,
     integrator::Symbol=:approx, checkpoints::Vector{<:Real}=zeros(0))
 
     float_state_harness = StateHarness(Float64, body);
@@ -21,10 +21,11 @@ function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, t
 
     freqs, shapes = frequencies(body, force, torque, dynamics_algorithm=dynamics_algorithm);
     dt = 0.5dt_modify / maximum(freqs);
+    println("dt ",dt)
 
     starttime = time();
     condition(u, t, integrator) = any(t .== checkpoints);
-    affect!(integrator) = println("T = ",integrator.t, " @ ",(time() - starttime)/60, "mins");
+    affect!(integrator) = println("T = ",@sprintf("%.2f : %.1f%% @ %.2f mins",integrator.t, 100integrator.t/simtime, (time() - starttime)/60));
     cb_checkpoints = DiscreteCallback(condition, affect!);
 
     if integrator == :approx
