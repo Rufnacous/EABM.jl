@@ -56,6 +56,9 @@ plot(p1, p2, layout=l);
 
 ```
 
+### Contact
+Please contact Rufus Dickinson via his Loughborough University email, found on his [staff page](https://www.lboro.ac.uk/departments/abce/staff/rufus-dickinson/).
+
 <!---
 Stuff from Julia library setup. I may one day submit the EABM to be an official library!
 [![Build Status](https://github.com/Rufnacous/EABM.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/Rufnacous/EABM.jl/actions/workflows/CI.yml?query=branch%3Amaster)
