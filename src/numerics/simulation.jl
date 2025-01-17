@@ -1,4 +1,7 @@
 
+# Basic setup of a vector cauchy problem wrapping the ABA.
+# Integration operated by DifferentialEquations.jl.
+
 # The state harness needs to be declared + allocated externally to the vector_cauchy_problem.
 # If it is not, it will require allocating for every time vector_cauchy_problem is run, which
 # should be avoided. Reallocating it outside the definition of vector_cauchy_problem means

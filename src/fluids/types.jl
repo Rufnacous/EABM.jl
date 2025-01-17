@@ -1,4 +1,7 @@
 
+# Type definitions such that we can have Articulation{mutable struct FluidborneFilamentProperties},
+# allowing torque_elastic and fluid forces to be applied to an articulation.
+
 abstract type FFIProperties end;
 
 mutable struct StandardFFIProperties <: FFIProperties

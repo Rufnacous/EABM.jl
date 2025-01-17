@@ -1,5 +1,7 @@
 
-
+# featherstones_with_added_mass is an ArticulatedBodyAlgorithm,
+# as it makes modifications to the featherstones_algorithm step 1.
+# This is described in the journal paper for the EABM. Section 2.3.2
 function featherstones_with_added_mass(fluid_density::Number, flow::Function)
     function added_mass_aba_pass1!(
         a::Articulation, i::ArticulationHarness,
@@ -39,7 +41,7 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
     );
 end
 
-
+# See Leclercq and de Langre's 2018 paper "Reconfiguration of elastic blades in oscillatory flow"
 function force_further_added_mass_for_elongated_bodies(fluid_density::Number, flow_func::Function)
     function f_ma_elongated(a::Articulation, i::ArticulationHarness, t::Real)
 
@@ -60,46 +62,3 @@ function force_further_added_mass_for_elongated_bodies(fluid_density::Number, fl
     return ExternalForce(f_ma_elongated);
 end
 
-
-
-
-function featherstones_with_added_mass_and_virtual_buoyancy(fluid_density::Number, flow::Function)
-    function added_mass_aba_pass1!(
-        a::Articulation, i::ArticulationHarness,
-        aλ::Articulation, iλ::ArticulationHarness,
-        t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
-
-        If, Sf = get_added_inertia_properties(a.properties.ffi, i, fluid_density);
-        Uf = If * Sf; Df = Sf' * Uf; D⁻¹f = inv(Df);
-        Iaf = If - (Uf * D⁻¹f * Uf');
-
-        U_global_absolute = [0,0,0,flow(i.p, t)...];
-        U_local_absolute = i.X0 * U_global_absolute;
-        U_local_relative = U_local_absolute .- i.v;
-
-        vJf = Sf * Sf' * U_local_relative;
-        vf = i.v + vJf;
-
-        Du_global = flow_acceleration(flow, i.p, t) + (flow_jacobian(flow, i.p, t) * i.V[4:6]); 
-        Du_local = i.X0 * [0,0,0, Du_global...];
-        
-        pAf = Iaf * ( (vf ⨱ vJf) + (vf ⨳ vf) - Du_local );
-
-
-        Ivb = get_virtual_buoyancy_inertia(a.properties.ffi, i, fluid_density);
-        fvb = Ivb * (i.X0 * [0,0,0, flow_acceleration(flow, i.p, t)...]);
-
-        i.IA = a.I + Iaf #+ Ivb;
-        i.pA = i.v ⨳ (a.I * i.v) - fx(a,i,t) + pAf - fvb;
-        return
-    end
-
-    return ArticulatedBodyAlgorithm(
-    [[ ((a,s,t,fx,τ) -> step(a, s[a], λ(a), s[λ(a)], t, fx, τ), action)
-        for (step, action) in 
-            [ (added_mass_aba_pass1!, :forward),
-            (aba_pass2!, :backward),
-            (aba_pass3!, :forward),
-            ] ]..., (get_acceleration, :return)]
-    );
-end

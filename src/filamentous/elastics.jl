@@ -1,20 +1,8 @@
 
-function get_stiffnesses(body::AbstractArticulatedBody)
-    stiffnesses = zeros(dof(body));
-    forward_recurse_iterative!(body, get_stiffness, stiffnesses);
-    return stiffnesses;
-end
-function get_stiffness(a::Articulation, stiffnesses::Vector{<:Real})
-    individual_harness = ArticulationHarness(a, Float64);
-    XJ, vJ, cJ, S = j_calc(a.joint_type, individual_harness);
-    stiffnesses[a.state_indices] = diag(S[1:3,:]' * a.properties.elastics.spatial_rigidity * S[1:3,:]);
-end
-
-########
-
+# The driving torque for elasticity. Requires elastic_response to be defined for the joint type
+# and requires that every articulation.properties has a .elastics.
 torque_elastic() = InternalTorque((a::Articulation, i::ArticulationHarness, t::Real) -> elastic_response(a.joint_type, a.properties.elastics, i));
 
-#########
 
 function elastic_response(j::FixedJoint, properties::LinearElasticProperties, i::ArticulationHarness)
     return zeros(0);
@@ -58,4 +46,17 @@ function elastic_response(j::BendingJoint, properties::LinearElasticProperties, 
     
     return bending;
     
+end
+
+
+# Return a vector of stiffnesses of each DOF.
+function get_stiffnesses(body::AbstractArticulatedBody)
+    stiffnesses = zeros(dof(body));
+    forward_recurse_iterative!(body, get_stiffness, stiffnesses);
+    return stiffnesses;
+end
+function get_stiffness(a::Articulation, stiffnesses::Vector{<:Real})
+    individual_harness = ArticulationHarness(a, Float64);
+    XJ, vJ, cJ, S = j_calc(a.joint_type, individual_harness);
+    stiffnesses[a.state_indices] = diag(S[1:3,:]' * a.properties.elastics.spatial_rigidity * S[1:3,:]);
 end

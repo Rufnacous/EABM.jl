@@ -1,4 +1,8 @@
 
+# ForwardDiff is used to find the jacobian dq../dq
+# That is, differential of accelerations vector w.r.t. the state vector.
+# LinearAlgebra is used to find the eigenvectors.
+
 function frequencies(body::AbstractArticulatedBody; dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm)
     return frequencies(body, force_none(), torque_elastic(), dynamics_algorithm=dynamics_algorithm);
 end

@@ -1,4 +1,6 @@
 
+# Example second moment and articulation definitions for simple geometries.
+
 function cylinder_second_moment_area(radius)
     Ix_Iy = pi * (radius ^ 4) / 4;
     return [Ix_Iy 0 0; 0 Ix_Iy 0 ; 0 0 0];

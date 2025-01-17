@@ -1,3 +1,5 @@
+# Basic statics procedure with newton raphson iteration.
+# Find q.. (accelerations) = 0.
 
 function static_posture(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque; 
         solver=newton_raphson(0.01), repeat_condition=standard_repeat_condition)
@@ -56,12 +58,18 @@ function aba_pass2_statics(stiffnesses)
         i.D = i.S' * i.U;
         i.D⁻¹ = inv(i.D);
         i.u = (τ(a,i,t) - (i.S' * i.pA)) ./ stiffnesses[a.state_indices];
+        # decreases problem stiffness + improves ease of use.
+        # u is returned by get_torque but corresponds to a linear estimate of the
+        # displaced angle.
         
         if aλ.body_number == 0
             return
         end
-        Ia = i.IA # - (i.U * i.D⁻¹ * (i.U)');
-        pa = i.pA # + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
+        Ia = i.IA
+         # - (i.U * i.D⁻¹ * (i.U)');
+        pa = i.pA
+         # + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
+        # removed to decrease stiffness, as unecessary to solution.
 
         iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
         iλ.pA += i.λX⁻ᵀ * pa;
@@ -71,6 +79,7 @@ function aba_pass2_statics(stiffnesses)
     return aba_pass2_statics!;
 end
 
+# ab_torque_calculator is an ArticulatedBodyAlgorithm for use in statics solution.
 ab_torque_calculator(body::AbstractArticulatedBody) = ArticulatedBodyAlgorithm(
     [[ ((a,s,t,fx,τ) -> step(a, s[a], λ(a), s[λ(a)], t, fx, τ), action)
         for (step, action) in 

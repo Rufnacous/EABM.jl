@@ -1,3 +1,5 @@
+# Basic fluid forces.
+# See the journal paper for more info.
 
 force_drag(fluid_density::Number, u::Vector{<:Number}) = ExternalForce(
     (a::Articulation, i::ArticulationHarness, t::Real) -> filament_drag(a.properties.ffi, i, fluid_density, u)
@@ -27,6 +29,10 @@ end
 
 force_buoyancy(fluid_density::Number;g::Number=9.81, downwards::Vector{<:Number}=[0,0,-1]) = ExternalForce(
     (a::Articulation, i::ArticulationHarness, t::Real) -> -(fluid_density * a.properties.ffi.volume * g) .* downwards
+);
+
+force_virtual_buoyancy(fluid_density::Number; u::Function) = ExternalForce(
+    (a::Articulation, i::ArticulationHarness, t::Real) -> -(fluid_density * a.properties.ffi.volume * flow_acceleration(u, i.p, t))
 );
 
 
