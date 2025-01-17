@@ -36,7 +36,7 @@ module EABM
 
     export frequencies, static_posture, simulate;
     export Rod, FluidborneRod, RotaryJoint, BendingJoint;
-    export force_none, torque_elastic, force_drag;
+    export force_none, force_gravity, torque_elastic, force_drag, force_buoyancy;
     export dof, n_bodies, get_position;
 
     function test_joint()

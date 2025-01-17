@@ -1,4 +1,5 @@
 
+# An example body. No idea why you would use this library to simulate a structure without elasticity.
 mutable struct NPendulum <: AbstractArticulatedBody
     articulation_zero::Articulation
     dofs::Integer
@@ -23,18 +24,21 @@ function NPendulum(n::Integer, seg_lengths::Number, seg_masses::Number, joints::
     return body;
 end
 
+
+
+# Attach one structure to another
 function join_bodies!(parent_body::AbstractArticulatedBody, parent_articulation::Articulation, child_body::AbstractArticulatedBody)
     for child_articulation in child_body.articulation_zero.children
         join_bodies!(parent_body, parent_articulation, child_articulation)
     end
 end
-
 function join_bodies!(parent_body::AbstractArticulatedBody, parent_articulation::Articulation, child_root::Articulation)
     push!(parent_articulation.children, child_root)
     child_root.parent = parent_articulation;
     refresh_all_indices!(parent_body);
 end
 
+# Attach one structure to the tip of another
 function attach_to_tip!(parent_body::AbstractArticulatedBody, child_body::AbstractArticulatedBody)
     tips = get_tips(parent_body);
     if length(tips) != 1
@@ -43,6 +47,7 @@ function attach_to_tip!(parent_body::AbstractArticulatedBody, child_body::Abstra
     join_bodies!(parent_body, tips[1], child_body)
 end
 
+# Must be carried out after doing operations which alter a bodies' dof.
 function refresh_all_indices!(body::AbstractArticulatedBody)
     forward_recurse(body, refresh_all_indices!, (1, 1));
     dof(body, force=true);
@@ -55,7 +60,7 @@ function refresh_all_indices!(a::Articulation, next_indices::Tuple{<: Integer, <
     return (next_body_number, next_state_index);
 end
 
-
+# Discretization calculations for the lengths of segments in a filament.
 function even_discretization(total_length::Number, i::Integer, n::Integer)
     return total_length / n;
 end

@@ -1,3 +1,4 @@
+# Operation-abstract means of recursion.
 
 function forward_recurse(body::AbstractArticulatedBody, f::Function, initialstate, args...; retrace::Bool=false, kwargs...)
     return forward_recurse(body.articulation_zero.children[1], f, retrace, initialstate, args...; kwargs...);

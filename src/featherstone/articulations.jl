@@ -1,5 +1,9 @@
+# Articulation-related functions.
+
+# Get the parent of an articulation.
 λ(a::Articulation) = a.parent;
 
+# A body's .articulation_zero should always be this.
 articulation_zero() = Articulation(
     0, 0:-1,
     ArticulationZeroJoint(),
@@ -10,7 +14,7 @@ articulation_zero() = Articulation(
     nothing
 );
 
-
+# Articulation constructor which does some handy spatial vector calculations
 Articulation(
     number::Integer, next_free_state_index::Integer, joint::JointType,
     parent::Union{Articulation,Nothing}, length::Real, mass::Real, inertia_matrix_about_center::Matrix{<:Real},
@@ -25,10 +29,12 @@ Articulation(
     properties
 );
 
+# Query a body and get an articulation by body_number
 function get_articulation(body::AbstractArticulatedBody, by_number::Number)
     return forward_recurse(body, (candidate::Articulation, storage::Union{Nothing, Articulation}) -> ifelse(candidate.body_number == by_number, candidate, storage), nothing );
 end
 
+# Find all leaves of a tree
 function get_tips(body::AbstractArticulatedBody)
     tips::Array{Articulation} = [];
     forward_recurse!(body, (candidate::Articulation, storage::Array{Articulation}) -> append!(storage, ifelse(length(candidate.children)==0,[candidate],[])), tips);

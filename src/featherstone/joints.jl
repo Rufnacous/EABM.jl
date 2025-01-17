@@ -1,8 +1,11 @@
 
+# See Chapter 4.4 of Rigid Body Dynamics Algorithms by Roy Featherstone (2008).
+# Look for "jcalc" or "joint calculation routine".
 function j_calc(j::JointType, s::ArticulationHarness)
     S,Ṡ,E,p = get_transformations(j, s.q, s.q_dt);
 
     numerictype = typeof(E).parameters[1];
+    # Copying the numerictype allows this to be auto-differentiable by ForwardDiff.
     E_diag = zeros(numerictype, 6, 6);
     E_diag[1:3,1:3] = E; E_diag[4:6,4:6] = E;
     p_diag = xlt(p);
@@ -15,9 +18,14 @@ function j_calc(j::JointType, s::ArticulationHarness)
     return XJ, vJ, cJ, S
 end
 
+
+# Just to be use for the articulation_zero of a body.
 struct ArticulationZeroJoint <: JointType end
 dof(j::ArticulationZeroJoint) = 0;
 
+
+
+# A joint which rigidly connects an articulation to its parent. i.e. with no articulation at all.
 struct FixedJoint <: JointType
 end
 dof(j::FixedJoint) = 0;
@@ -31,7 +39,7 @@ function get_transformations(j::FixedJoint, q::Vector{<: Real}, qdt::Vector{<: R
 end
 
 
-
+# 1DOF rotational joints. RotaryJoint(:x), RotaryJoint(:y), RotaryJoint(:z).
 struct RotaryJoint <: JointType
     axis::Symbol
 end
@@ -62,7 +70,7 @@ function get_transformations(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: 
 end
 
 
-
+# 2DOF bending joints akin to Euler Rotations. Suffer from small-angle limitations.
 struct EulerXYJoint <: JointType end
 dof(j::EulerXYJoint) = 2;
 function get_transformations(j::EulerXYJoint, q::Vector{<: Real}, qdt::Vector{<: Real})
@@ -91,6 +99,9 @@ function get_transformations(j::EulerXYJoint, q::Vector{<: Real}, qdt::Vector{<:
     return (S, Ṡ, E, p);
 end
 
+
+
+# Better 2DOF bending joints.
 struct BendingJoint <: JointType end
 dof(j::BendingJoint) = 2;
 function get_transformations(j::BendingJoint, q::Vector{<: Real}, qdt::Vector{<: Real})

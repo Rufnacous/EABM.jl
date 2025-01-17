@@ -1,16 +1,20 @@
 
+# An ArticulatedBodyAlgorithm is a callable struct.
+
 function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticulatedBody,
+    # this caller creates a StateHarness so you dont have to.
         generalized_state::Vector{<: Real}, time::Real,
         force::AbstractExternalForce, torque::AbstractInternalTorque)
-
     return algorithm(articulated_body, StateHarness(Float64, articulated_body), generalized_state, time, force, torque);
 end
 function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticulatedBody,
     harness::StateHarness, generalized_state::Vector{<: Real}, time::Real,
     force::AbstractExternalForce, torque::AbstractInternalTorque)
 
+    # Always set_state! before calling ABA steps.
     set_state!(articulated_body, harness, generalized_state);
 
+    # Each step is either the final step which returns data, or is forward/backward recursed.
     for (step, action) in algorithm.passes
         if (action == :return)
             return step(articulated_body, harness);
@@ -22,6 +26,8 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
     end
     
 end
+
+# The Articulated Body Algortihm. See Page 132 of Rigid Body Dynamics Algorithms by Roy Featherstone (2008).
 
 function aba_pass1!(
     a::Articulation, i::ArticulationHarness,
@@ -66,6 +72,7 @@ function aba_pass3!(
 
 end
 
+# Composes these steps into an ArticulatedBodyAlgorithm.
 featherstones_algorithm = ArticulatedBodyAlgorithm(
     [[ ((a,s,t,fx,τ) -> step(a, s[a], λ(a), s[λ(a)], t, fx, τ), action)
         for (step, action) in 

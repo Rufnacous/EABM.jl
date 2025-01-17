@@ -1,4 +1,5 @@
 
+# See Chapter 2.13 of Rigid Body Dynamics Algorithms by Roy Featherstone (2008).
 function inertia_matrix_about_origin(mass::Real, inertia_matrix_about_center::Matrix{<:Real}, OC::Vector{<:Real})
     return inertia_matrix_about_point(mass, inertia_matrix_about_center, OC, [0.0,0.0,0.0]);
 end
@@ -13,6 +14,7 @@ function inertia_matrix_about_point(mass::Real, inertia_matrix_about_center::Mat
     return Io;
 end
 
+### Example geometries. Articulation and inertia definitions.
 
 CylinderArticulation(
     number::Integer, next_free_state_index::Integer, joint::JointType,
@@ -53,7 +55,7 @@ function lumped_mass_inertia(mass::Real, radius::Real)
     return [Ixyz 0 0; 0 Ixyz 0; 0 0 Ixyz];
 end
 
-
+# Rotation mathematics
 
 function rotate_x(theta::Number)
     c = cos(theta); s = sin(theta);
@@ -88,6 +90,7 @@ end
 
 
 function get_rotation_b_is_ez(a::Vector{<: Number})
+    # get_rotation when b = [0,0,1].
     v = [a[2], -a[1], 0];
     c = a[3];
     𝞦v = 𝞦(v);

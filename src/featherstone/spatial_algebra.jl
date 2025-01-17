@@ -1,3 +1,5 @@
+# See Chapter 2 of Rigid Body Dynamics Algorithms by Roy Featherstone (2008).
+
 function 𝞦(x::Vector{<: Real})
     if length(x) != 3
         throw(DimensionMismatch(@sprintf("𝞦 is only defined for vectors of length 3; x is length %d.", length(x))));

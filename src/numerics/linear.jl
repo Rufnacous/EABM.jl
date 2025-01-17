@@ -1,4 +1,7 @@
 
+function frequencies(body::AbstractArticulatedBody; dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm)
+    return frequencies(body, force_none(), torque_elastic(), dynamics_algorithm=dynamics_algorithm);
+end
 function frequencies(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque; dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm)
     j = jacobian( make_linear_analysis_problem(dynamics_algorithm, body, force, torque) , zeros(dof(body)) );
 
