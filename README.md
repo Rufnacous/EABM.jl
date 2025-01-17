@@ -34,8 +34,7 @@ torque = torque_elastic();
 predicted_freqs, modes = frequencies(body);
 println("Predicted frequencies =   ", predicted_freqs[end-1:end] );
 
-# Simulate T seconds of movement. The timestep dt = ½dt_modify ÷ the maximum eigenfrequency.
-# Integration is done with DifferentialEquations.jl.
+# Simulate T seconds of movement. Integration is done with DifferentialEquations.jl.
 T = 4;
 iq = zeros(body);
 sol = simulate(body, force, torque, T,
