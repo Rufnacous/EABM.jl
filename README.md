@@ -1,4 +1,5 @@
 # EABM.jl: The Elastically-Articulated Body Method for Modelling Fluid-Filament Interaction
+![](docs/anim.gif)
 ### Purpose
 This is a structural dynamics library for Julia. It can be used to **simulate 3D, tree-toplogy assemblies of slender structures, under the loads of a submerging fluid**. Particularly, its use is expected for simulating the dynamics of complex (branching) aquatic plants, but it has been developed with sufficient generality that it can be used in other applications. The backbone of the EABM is Roy Featherstone's *Articulated Body Algorithm*, which is sufficiently extensible such that it may take little work to introduce new forces (even beyond fluid-driven ones), closed topologies (allowing trusses, etc), or alternate boundary conditions. Anecdotally; we have also been able to use it to model a wind turbine, and the seta structure of a gecko's foot adhering electro-statically with a wall.
 ### Journal Paper
