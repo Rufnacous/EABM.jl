@@ -60,13 +60,13 @@ plot(p1, p2, layout=l);
 ### Installation
 For the moment, EABM.jl is not available in the General Registry. To install, follow these steps.
 
- 1. Clone this repository, e.g. to a folder called `EABM`.
- 2. Navigate to `EABM` in your terminal / command prompt.
- 3. Type the following
- ⋅⋅⋅ Press `]`.
- ⋅⋅⋅ `add LinearAlgebra, Printf, DifferentialEquations, ForwardDiff`
- ⋅⋅⋅ Press backspace.
- ⋅⋅⋅ `using EABM`
+1. Clone this repository, e.g. to a folder called `EABM`.
+2. Navigate to `EABM` in your terminal / command prompt.
+3. Type the following
+    * Press `]`.
+    * `add LinearAlgebra, Printf, DifferentialEquations, ForwardDiff`
+    * Press backspace.
+    * `using EABM`
 
  One reason this may not work is due to package versioning. This is something that will be fixed when the package is submitted to the General Registry.
 
