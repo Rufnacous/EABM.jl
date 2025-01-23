@@ -58,7 +58,7 @@ plot(p1, p2, layout=l);
 ```
 
 ### Installation
-For the moment, EABM.jl is not available in the General Registry. To install, follow these steps.
+For the moment, EABM.jl is not available in the General Registry. To install, follow these steps. Please note that EABM.jl was written in Julia version 1.8.4.
 
 1. Clone this repository, e.g. to a folder called `EABM`.
 2. Navigate to `EABM` in your terminal / command prompt.
