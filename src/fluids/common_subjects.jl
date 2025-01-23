@@ -22,26 +22,18 @@ end
 function FluidborneStripArticulation(
     number::Integer, next_free_state_index::Integer, joint::JointType,
     parent::Union{Articulation,Nothing}, length::Real, width::Real, thickness::Real, density::Real, stiffness::Real,
-    Cd::Real, Cf::Real;
+    Cd::Real, Cf::Real, Cm::Real;
     curvature::Matrix{<:Real}=[1 0 0; 0 1 0; 0 0 1], pregeometry::Vector{<:Real}=[0,0,0])
 
-    CM = 1 / pi;
-    
     Sf = [ 
-        0 1 0 0;
-        0 0 1 0;
-        0 0 0 1;
-        0 0 0 0;
-        0 0 0 0;
-        1 0 0 0
+        0 0;
+        0 0;
+        0 1;
+        0 0;
+        0 0;
+        1 0
     ];
-
-    I_ia = cylinder_inertia(1, length, width/2)
-
-    
-    added_inertia = inertia_matrix_about_origin(1, I_ia, [0,0,0.0]);
-    virtual_buoyancy = inertia_matrix_about_origin(1, zeros(3,3), [0,0,0]);
-
+    added_inertia = inertia_matrix_about_origin(1, diagm([1,1,1]) .* 0.4((length/2)^2), [0,0,0]);
 
     return Articulation(
         number, next_free_state_index, joint, parent, length,
@@ -54,7 +46,7 @@ function FluidborneStripArticulation(
                 Cd, Cf,
                 length*width, length*(2width + 2thickness),
                 length*width*thickness,
-                CM*(length * pi * (width/2)^2),
+                Cm*(length * pi * (width/2)^2),
                 added_inertia, Sf)
             )
     );
@@ -67,7 +59,7 @@ end
 function FluidborneStrip(strip_length::Number, strip_width::Number,
         strip_thickness::Number, strip_density::Number, strip_stiffness::Number,
         n::Integer, joints::JointType; discretization::Function=even_discretization,
-        curvature::Matrix{<:Real}=[1 0 0; 0 1 0; 0 0 1], Cd::Real=3.6479, Cf::Real=0.014)
+        curvature::Matrix{<:Real}=[1 0 0; 0 1 0; 0 0 1], Cd::Real=3.6479, Cf::Real=0.014, Cm::Real=1)
     a0 = articulation_zero();
     alast =  a0; anext = nothing;
 
@@ -75,7 +67,7 @@ function FluidborneStrip(strip_length::Number, strip_width::Number,
 
     for ni = 1:n
         segment_length = discretization(strip_length, ni, n);
-        anext = FluidborneStripArticulation(ni, next_free_state_index, joints, alast, segment_length, strip_width, strip_thickness, strip_density, strip_stiffness, Cd, Cf, curvature=curvature)
+        anext = FluidborneStripArticulation(ni, next_free_state_index, joints, alast, segment_length, strip_width, strip_thickness, strip_density, strip_stiffness, Cd, Cf, Cm, curvature=curvature)
         next_free_state_index += dof(anext);
         push!(alast.children, anext); anext.parent = alast;
         alast = anext;

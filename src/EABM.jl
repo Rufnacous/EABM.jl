@@ -96,19 +96,21 @@ module EABM
 
 
     function test(;dt_modify=0.5, n = 2, T=8)
-        # changes so far:
-        #  - changed EABM to lump masses
-        #  - changed Filamentous to lump velocity measurements
 
         rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
+        
+        # See Zhu et al. 2020 "Mechanisms for the Asymmetric Motion..." for Cm calculation
+        KC = 0.206*2/width;
+        Cm = min(ifelse(KC < 20, 1+0.35(KC^2/3), 1+0.15(KC^2/3)), 1+((KC-18)^2)/49);
 
-        body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:y),
+        body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:y), Cm = Cm,
             discretization = gauss_lobatto_discretization);
             # discretization = even_discretization);
 
         fluid_density = 1000;
         flow_func = asymmetric_wave_profile(1.9287, T-6);
-        
+
+
         force = force_gravity() + force_buoyancy(fluid_density) + 
             force_drag(fluid_density, flow_func) +
             force_skin_friction(fluid_density, flow_func) + 
