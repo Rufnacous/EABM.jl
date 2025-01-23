@@ -1,9 +1,14 @@
 # EABM.jl: The Elastically-Articulated Body Method for Modelling Fluid-Filament Interaction
-![](docs/anim.gif)
+| ![](docs/anim.gif) | 
+|:--:| 
+| *A complexly branched plant oscillates under 3D wave-current flow.* |
 ### Purpose
 This is a structural dynamics library for Julia. It can be used to **simulate 3D, tree-toplogy assemblies of slender structures, under the loads of a submerging fluid**. Particularly, its use is expected for simulating the dynamics of complex (branching) aquatic plants, but it has been developed with sufficient generality that it can be used in other applications. The backbone of the EABM is Roy Featherstone's *Articulated Body Algorithm*, which is sufficiently extensible such that it may take little work to introduce new forces (even beyond fluid-driven ones), closed topologies (allowing trusses, etc), or alternate boundary conditions. Anecdotally; we have also been able to use it to model a wind turbine, and the seta structure of a gecko's foot adhering electro-statically with a wall.
 ### Journal Paper
 This codebase is an open source version of the one used in a paper, which is currently under review, for the *Journal of Fluids and Structures*, coauthored by myself (Rufus Dickinson), Dr. Tim Marjoribanks, Prof. Chris Keylock, and Dr. Alessandro Palmeri, as part of my PhD in Fluid-Structure Interaction at Loughborough University. In that paper, **the EABM is validated in its ability to simulate linear statics and dynamics of beams, flow-induced reconfiguration of heterogeneous and complex plants, and wave-induced dynamics of seagrass**. The test cases for the module correspond to a subset of these validations.
+| ![](docs/dynamics.png) | 
+|:--:| 
+| *A silicon strip's motion inside a wave tank, predicted by the EABM using the virtual fluid articulation model.* |
 ### Technical Overview
 The extension/modification of Featherstone's algorithm to the study of fluid-filament interaction is achieved through 3 principle model components: The definition of **elastic torques driving rotational joints, simulating bending**. The definition of **a suite of fluid forces; buoyancy, drag, friction, virtual buoyancy, and added mass**. Use of eigenvector analysis, iterative methods, and integrators; to respectively predict (simulate) linear dynamics, static responses, and nonlinear dynamics. Amongst some novelties of how the EABM treats these topics, the stand-out is the *virtual fluid articulation* concept, which is a neat introduction of the added mass effect to the framework of the articulated body algorithm.
 ### Example Usage
