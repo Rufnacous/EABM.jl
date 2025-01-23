@@ -44,7 +44,7 @@ function elastic_response(j::BendingJoint, properties::LinearElasticProperties, 
     torque = (EI * torque_axis) * ifelse(ed_z==1, 1, gamma);
     bending = i.S[1:2,1:2]' * torque;
     
-    return bending;
+    return -bending;
     
 end
 

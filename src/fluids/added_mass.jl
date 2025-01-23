@@ -11,6 +11,11 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
         If, Sf = get_added_inertia_properties(a.properties.ffi, i, fluid_density);
         Uf = If * Sf; Df = Sf' * Uf; D⁻¹f = inv(Df);
         Iaf = If - (Uf * D⁻¹f * Uf');
+        # display(If)
+        # # display(Sf)
+        # display(Uf * D⁻¹f * Uf')
+        # display(Iaf)
+        # readline()
 
         U_global_absolute = [0,0,0,flow(i.p, t)...];
         U_local_absolute = i.X0 * U_global_absolute;
@@ -19,9 +24,7 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
         vJf = Sf * Sf' * U_local_relative;
         vf = i.v + vJf;
 
-        force_transform = xlt(a.mass_center)' * i.X0;
-
-        Du_global = flow_acceleration(flow, i.p, t) + (flow_jacobian(flow, i.p, t) * i.V[4:6]); 
+        Du_global = flow_acceleration(flow, i.p, t);
         Du_local = i.X0 * [0,0,0, Du_global...];
         pAf = Iaf * ( (vf ⨱ vJf) + (vf ⨳ vf) - Du_local );
 

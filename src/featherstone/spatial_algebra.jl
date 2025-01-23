@@ -10,6 +10,9 @@ function 𝞦(x::Vector{<: Real})
 end
 
 # Spatial cross product
+function spatial_cross(a,b)
+    return a ⨱ b;
+end
 function ⨱(a::Vector{<: Real}, b::Vector{<: Real})
     if length(a) != 6
         throw(DimensionMismatch(@sprintf("⨱ is only defined for vectors of length 6; a and b are lengths %d and %d.",length(a), length(b))));
@@ -20,6 +23,9 @@ function ⨱(a::Vector{<: Real}, b::Vector{<: Real})
     return [ 𝞦(a[1:3]) zeros(3,3) ; 𝞦(a[4:6]) 𝞦(a[1:3]) ] * b;
 end
 # Dual of spatial cross product
+function dual_spatial_cross(a,b)
+    return a ⨳ b;
+end
 function ⨳(a::Vector{<: Real}, b::Vector{<: Real})
     if length(a) != 6
         throw(DimensionMismatch(@sprintf("⨱ is only defined for vectors of length 6; a and b are lengths %d and %d.",length(a), length(b))));

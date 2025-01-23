@@ -109,8 +109,7 @@ function get_transformations(j::BendingJoint, q::Vector{<: Real}, qdt::Vector{<:
     cy = cos(q[1]); sy = sin(q[1]); cz = cos(q[2]); sz = sin(q[2]);
     qdtz = qdt[2];
 
-    Q = get_rotation_b_is_ez([sy*cz, -sz, cy*cz]);
-    E = Q';
+    E = get_rotation_b_is_ez([sy*cz, -sz, cy*cz]);
 
     S = [ 
         0     1;

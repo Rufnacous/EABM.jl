@@ -31,8 +31,8 @@ force_buoyancy(fluid_density::Number;g::Number=9.81, downwards::Vector{<:Number}
     (a::Articulation, i::ArticulationHarness, t::Real) -> -(fluid_density * a.properties.ffi.volume * g) .* downwards
 );
 
-force_virtual_buoyancy(fluid_density::Number; u::Function) = ExternalForce(
-    (a::Articulation, i::ArticulationHarness, t::Real) -> -(fluid_density * a.properties.ffi.volume * flow_acceleration(u, i.p, t))
+force_virtual_buoyancy(fluid_density::Number, u::Function) = ExternalForce(
+    (a::Articulation, i::ArticulationHarness, t::Real) -> (fluid_density * a.properties.ffi.volume * flow_acceleration(u, i.p, t))
 );
 
 

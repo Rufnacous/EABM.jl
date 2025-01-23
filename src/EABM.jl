@@ -104,30 +104,32 @@ module EABM
 
         body = FluidborneStrip(rod_length, width, thickness, density, stiffness, n, RotaryJoint(:y),
             discretization = gauss_lobatto_discretization);
+            # discretization = even_discretization);
 
         fluid_density = 1000;
-        flow_func = asymmetric_wave_profile(0.039, 2pi / 2, 1.9287, 0.3, T-6);
+        flow_func = asymmetric_wave_profile(1.9287, T-6);
         
-        force = force_buoyancy(fluid_density) + 
+        force = force_gravity() + force_buoyancy(fluid_density) + 
             force_drag(fluid_density, flow_func) +
             force_skin_friction(fluid_density, flow_func) + 
-            force_gravity() + 
+            force_virtual_buoyancy(fluid_density, flow_func) + 
             force_further_added_mass_for_elongated_bodies(fluid_density, flow_func)
 
         torque = torque_elastic();
         
         predicted_freqs, modes = frequencies(body, force_none(), torque,
-            dynamics_algorithm = featherstones_with_added_mass_and_virtual_buoyancy(fluid_density, flow_func)
+            dynamics_algorithm = featherstones_with_added_mass(fluid_density, flow_func)
         );
         println("Predicted frequencies =   ",predicted_freqs[end-1:end] );
+        println("                           [4.69, 0.36]")
 
         iq = zeros(body);
 
 
         sol = simulate(body, force, torque, T,
             initcond = iq, dt_modify = dt_modify,
-            dynamics_algorithm = featherstones_with_added_mass_and_virtual_buoyancy(fluid_density, flow_func),
-            integrator=:stable, checkpoints = collect(LinRange(0,1,21))
+            dynamics_algorithm = featherstones_with_added_mass(fluid_density, flow_func),
+            integrator=:approx, checkpoints = collect(LinRange(0,1,21))
             );
 
 
@@ -137,12 +139,12 @@ module EABM
 
         cols = cgrad(:roma);
 
-        plot([],[],label="", xlims=(-0.125,0.125), ylims=(0,0.25));
+        plot([],[],label="", xlims=(-0.125,0.125), ylims=(0,0.25),aspect_ratio=:equal);
         ts = LinRange(sol.t[end] - 2, sol.t[end], 50);
         for ti in eachindex(ts)
             t = ts[ti];
             pos = get_position(body, sol(t));
-            plot!(-pos[1,:], pos[3,:], label="", color=cols[ti  / length(ts)],aspect_ratio=:equal)
+            plot!(pos[1,:], pos[3,:], label="", color=cols[ti  / length(ts)])
             readline()
         end
 
@@ -152,32 +154,7 @@ module EABM
 
     end
 
-    function SpeedTestRod(rod_length::Number, rod_radius::Number, rod_density::Number, rod_stiffness::Number, breadth::Integer, depth::Integer, joints::JointType)
-        a0 = articulation_zero();
-
-        next_free_state_index = 1;
-        next_body = 1;
-        a1 = RodArticulation(next_body, next_free_state_index, joints, a0, rod_length/depth, rod_radius, rod_density, rod_stiffness);
-        next_free_state_index += dof(a1); next_body += 1;
-        push!(a0.children, a1); a1.parent = a0;
-
-        for bi = 1:breadth
-            alast = a1;
-            for di = 1:depth
-                anext = RodArticulation(next_body, next_free_state_index, joints, alast, rod_length/depth, rod_radius, rod_density, rod_stiffness)
-                next_free_state_index += dof(anext); next_body += 1;
-                push!(alast.children, anext); anext.parent = alast;
-                alast = anext;
-            end
-        end
-
-        body = Rod(a0, -1);
-        dof(body, force=true);
-    
-        return body;
-
-    end
-    function asymmetric_wave_profile(aw, 𝜔, k, h, ramptime)
+    function asymmetric_wave_profile(k, ramptime)
         function wave_velocity(pos, t)
             z = pos[3];
             x = pos[1];
@@ -236,6 +213,31 @@ module EABM
     
         
 
+    function SpeedTestRod(rod_length::Number, rod_radius::Number, rod_density::Number, rod_stiffness::Number, breadth::Integer, depth::Integer, joints::JointType)
+        a0 = articulation_zero();
+
+        next_free_state_index = 1;
+        next_body = 1;
+        a1 = RodArticulation(next_body, next_free_state_index, joints, a0, rod_length/depth, rod_radius, rod_density, rod_stiffness);
+        next_free_state_index += dof(a1); next_body += 1;
+        push!(a0.children, a1); a1.parent = a0;
+
+        for bi = 1:breadth
+            alast = a1;
+            for di = 1:depth
+                anext = RodArticulation(next_body, next_free_state_index, joints, alast, rod_length/depth, rod_radius, rod_density, rod_stiffness)
+                next_free_state_index += dof(anext); next_body += 1;
+                push!(alast.children, anext); anext.parent = alast;
+                alast = anext;
+            end
+        end
+
+        body = Rod(a0, -1);
+        dof(body, force=true);
+    
+        return body;
+
+    end
 
 
     
@@ -268,14 +270,10 @@ module EABM
                 for si in 1:samples
                     t = time()
                     for repeat in 1:repeatminimum
-                    # n_repeats = 0; repeatedfor = 0;
-                    # while (n_repeats < repeatminimum) #(repeatedfor < repeatfor) ||
                         alg(body, s, u, 0, force, torque);
-    #                    repeatedfor = time() - t; n_repeats += 1;
                     end
                     repeatedfor = time() - t;
                     ts[di] = repeatedfor / repeatminimum;
-                    # dataout[1+di, 1+bi] = ts[di];
                     datasamples[di,bi, si] = ts[di];
                 end
 
@@ -375,45 +373,6 @@ module EABM
     end
 
     
-#     function test_speed()
-#         length = 0.5; radius = 0.01; density = 1000; stiffness = 1e6;
-        
-#         force = force_none;
-#         torque = torque_elastic;
 
-#         ns = Int.(floor.(10 .^ LinRange(0, 3, 100)));
-#         times = zeros(size(ns));
-#         n_repeats = 100;
-            
-#         for ni in eachindex(ns)
-
-#             n = ns[ni];
-
-#             a1 = RodArticulation(1, 1, RotaryJoint(:x), nothing, length, radius, density, stiffness);
-#             body = ArticulatedBody(a1);
-
-#             for nii in 2:n
-#                 a2 = RodArticulation(nii, nii, RotaryJoint(:x),   a1,    length, radius, density, stiffness);
-#                 push!(a1.children, a2);
-
-#                 a1 = a2;
-#             end
-
-#             println(dof(body, force=true));
-#             harness = StateHarness(Float64, body); state = zeros(body);
-
-#             for repeat = 1:n_repeats
-#                 start = time();
-#                 featherstones_algorithm(body, harness, state, 0, force, torque);
-#                 times[ni] += time() - start;
-#             end
-#             times[ni] /= n_repeats;
-            
-#         end
-
-#         plot(log.(10,ns), log.(10,times))
-
-#         return;
-
-#     end
 end
+
