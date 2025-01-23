@@ -66,7 +66,7 @@ end
     test_subjects = [ surrogate1, surrogate2, surrogate3, surrogate4 ];
     flows = [(0.0031, 0.0499), (0.0066, 0.1078), (0.0084, 0.1979), (0.0215, 0.3197)];
 
-    plot([],[],label="", xlims=(-0.01, 1.2), aspect_ratio=:equal);
+    plot([],[],label="", xlims=(-0.01, 1.2), ylims=(0,0.5),title="Heterogeneous Plastic Strips Under Varied Fluid Loads", aspect_ratio=:equal);
 
     println("Starting statics... ")
 
@@ -88,7 +88,7 @@ end
 
             pos = get_position(body, static_result);
             plot!(pos[1,:] .+ 0.3*(flow_i-1), pos[3,:],
-                label=ifelse(flow_i==1,@sprintf("Body %d",body_i),""),
+                label=ifelse(flow_i==1,@sprintf("Surrogate %d",body_i),""),
                 color=palette(:tab10)[body_i], linewidth=2)
         end
     end
@@ -136,7 +136,7 @@ end
         return wave_vel;
     end
 
-    n = 50; T=20;
+    n = 50; T=30;
 
     rod_length = 0.2; width = 0.02; thickness = 0.0019; density = 670; stiffness = 0.5e6;
     
@@ -174,7 +174,7 @@ end
 
 
     cols = cgrad(:roma);
-    plot([],[],label="", xlims=(-0.125,0.125), ylims=(0,0.25),aspect_ratio=:equal);
+    plot([],[],label="", xlims=(-0.05,0.15), ylims=(0,0.2),aspect_ratio=:equal, xticks=[-0.05, 0, 0.05, 0.1, 0.15], yticks=[0,0.05,0.1,0.15,0.2],title="Silicon Strip in Wave Tank");
     ts = LinRange(sol.t[end] - 2, sol.t[end], 50);
     for ti in eachindex(ts)
         t = ts[ti];
