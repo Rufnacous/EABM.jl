@@ -53,6 +53,7 @@ end
 function get_stiffnesses(body::AbstractArticulatedBody)
     stiffnesses = zeros(dof(body));
     forward_recurse_iterative!(body, get_stiffness, stiffnesses);
+    stiffnesses[stiffnesses .== 0] .= maximum(stiffnesses[stiffnesses .> 0]);
     return stiffnesses;
 end
 function get_stiffness(a::Articulation, stiffnesses::Vector{<:Real})
