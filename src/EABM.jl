@@ -33,7 +33,7 @@ module EABM
     include("fluids/added_mass.jl");
 
     export frequencies, static_posture, simulate, featherstones_with_added_mass;
-    export Rod, FluidborneStrip, RotaryJoint, BendingJoint;
+    export ArticulatedBody, Rod, FluidborneStrip, RotaryJoint, BendingJoint;
     export torque_elastic;
     export force_none, force_gravity, force_buoyancy, force_drag,
         force_skin_friction, force_virtual_buoyancy,
