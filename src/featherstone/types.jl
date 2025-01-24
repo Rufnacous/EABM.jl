@@ -56,7 +56,7 @@ end
 function ArticulatedBody(a1::Articulation)
     a0 = articulation_zero(); push!(a0.children, a1); a1.parent = a0;
     body = ArticulatedBody(a0, -1);
-    dof(body);
+    dof(body, force=true);
     return body;
 end
 
