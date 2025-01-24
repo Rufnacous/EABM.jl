@@ -33,8 +33,9 @@ force_gravity(;g::Number=9.81, downwards::Vector{<:Number}=[0,0,-1]) = ExternalF
 
 # Calculate reaction force at root
 
-function get_reaction_force(b::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, t::Number; alg::ArticulatedBodyAlgorithm=featherstones_algorithm)
-    s = StateHarness(b, q);
-    alg(b, s, t, force, torque);
-    return s[b.articulation_zero.children[1]].pA;
+function get_reaction_force(b::AbstractArticulatedBody, q::Vector{<:Number}, force::AbstractExternalForce, torque::AbstractInternalTorque, t::Number; alg::ArticulatedBodyAlgorithm=featherstones_algorithm)
+    s = StateHarness(Float64, b);
+    alg(b, s, q, t, force, torque);
+
+    return inv(s[b.articulation_zero.children[1]].X0) * s[b.articulation_zero.children[1]].pA;
 end
