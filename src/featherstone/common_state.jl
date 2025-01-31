@@ -10,6 +10,15 @@ function get_acceleration(a::Articulation, accel::Vector{<:Real}, harness::State
     accel[a.state_indices] = harness[a].q_d²t;
 end
 
+function get_acceleration!(body::AbstractArticulatedBody, harness::StateHarness, accel::Vector{<:Real})
+    # returns the accelerations of an articulated body as a vector.
+    forward_recurse_iterative!(body, get_acceleration!, accel, harness);
+end
+function get_acceleration!(a::Articulation, accel::Vector{<:Real}, harness::StateHarness)
+    # inner loop function for the above.
+    accel[a.state_indices] = harness[a].q_d²t;
+end
+
 
 
 
@@ -66,20 +75,22 @@ function set_state!(articulated_body::AbstractArticulatedBody, harness::StateHar
     forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state, length(generalized_state) == 2dof(articulated_body));
 end
 function set_state!(a::Articulation, articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real}, includes_velocities::Bool)
+    q = generalized_state[a.state_indices]; 
     if includes_velocities
-        set_state!(a, harness, generalized_state[a.state_indices], generalized_state[dof(articulated_body) .+ a.state_indices]);
+        qdt = generalized_state[dof(articulated_body) .+ a.state_indices]; 
+        set_state!(a, harness, q, qdt);
     else
-        set_state!(a, harness, generalized_state[a.state_indices], zeros(length(a.state_indices)));
+        set_state!(a, harness, q, zeros(length(a.state_indices)));
     end
 end
 
-function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, q_dt::Vector{<: Real})
+function set_state!(a::Articulation, harness::StateHarness, q::AbstractVector{<: Real}, q_dt::AbstractVector{<: Real})
     # Processes the raw states of q and q_dt into the state harness, for velocities, transforms, and cartesian positions.
     i = harness[a];
     λi = harness[λ(a)];
 
-    i.q = q;
-    i.q_dt = q_dt;
+    i.q .= q;
+    i.q_dt .= q_dt;
 
     XJ = i.λX; #@view i.λX[:,:];
     vJ = @view i.λX⁻ᵀ[1,:];

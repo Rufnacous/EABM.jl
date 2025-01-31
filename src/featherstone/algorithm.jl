@@ -5,11 +5,13 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
     # this caller creates a StateHarness so you dont have to.
         generalized_state::Vector{<: Real}, time::Real,
         force::AbstractExternalForce, torque::AbstractInternalTorque)
-    return algorithm(articulated_body, StateHarness(Float64, articulated_body), generalized_state, time, force, torque);
+    v = zeros(body, no_derivatives=true);
+    algorithm(articulated_body, StateHarness(Float64, articulated_body), generalized_state, time, force, torque, v);
+    return v
 end
 function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticulatedBody,
     harness::StateHarness, generalized_state::Vector{<: Real}, time::Real,
-    force::AbstractExternalForce, torque::AbstractInternalTorque)
+    force::AbstractExternalForce, torque::AbstractInternalTorque, returnvec::Vector{<:Real})
 
     # Always set_state! before calling ABA steps.
     set_state!(articulated_body, harness, generalized_state);
@@ -17,7 +19,7 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
     # Each step is either the final step which returns data, or is forward/backward recursed.
     for (step, action) in algorithm.passes
         if (action == :return)
-            return step(articulated_body, harness);
+            step(articulated_body, harness, returnvec);
         elseif (action == :forward)
             forward_recurse_iterative!(articulated_body, step, harness, time, force, torque);
         elseif (action == :backward)
@@ -84,7 +86,7 @@ featherstones_algorithm = ArticulatedBodyAlgorithm(
             [ (aba_pass1!, :forward),
             (aba_pass2!, :backward),
             (aba_pass3!, :forward),
-            ] ]..., (get_acceleration, :return)]
+            ] ]..., (get_acceleration!, :return)]
     );
 
 

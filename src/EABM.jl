@@ -65,8 +65,8 @@ module EABM
         memallocd = @allocated aba_pass3!( a,i,al,il, 0.0, f,t);
         println("Allocated by aba_pass3! : ", memallocd);
 
-        
-        memallocd = @allocated featherstones_algorithm(body, harness, generalized_state, 0.0, f, t)
+        accelvec = zeros(body, no_derivatives=true);
+        memallocd = @allocated featherstones_algorithm(body, harness, generalized_state, 0.0, f, t,accelvec)
         println("Allocated by featherstones_algorithm : ", memallocd);
 
         
