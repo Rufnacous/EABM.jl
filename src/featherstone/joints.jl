@@ -18,6 +18,24 @@ function j_calc(j::JointType, s::ArticulationHarness)
     return XJ, vJ, cJ, S
 end
 
+function j_calc!(j::JointType, s::ArticulationHarness, XJ::AbstractMatrix{<:Number}, vJ::AbstractVector{<:Number}, cJ::AbstractVector{<:Number}, S::AbstractMatrix{<:Number}, Ṡ::AbstractMatrix{<:Number})
+    E = @view XJ[1:3,1:3];
+    p = @view XJ[4:6, 4];
+    get_transformations!(j, s.q, s.q_dt, S,Ṡ,E,p);
+    
+    𝞦p = @view XJ[1:3,4:6];
+    𝞦_minus!(𝞦p, p);
+    p .= 0;
+
+    XJ[4:6,4:6] .= E;
+    XJbl = @view XJ[4:6,1:3];
+    mul!(XJbl, E, 𝞦p);
+    𝞦p .= 0;
+
+    mul!(vJ, S, s.q_dt);
+    mul!(cJ, Ṡ, s.q_dt);
+end
+
 
 # Just to be use for the articulation_zero of a body.
 struct ArticulationZeroJoint <: JointType end
@@ -68,7 +86,13 @@ function get_transformations(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: 
         )
     end
 end
-
+function get_transformations!(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: Real}, S,Ṡ,E,p)
+    S .= 0;
+    S[2, 1] = 1;
+    Ṡ .= 0;
+    rotate_y!(q[1], E);
+    p .= 0;
+end
 
 # 2DOF bending joints akin to Euler Rotations. Suffer from small-angle limitations.
 struct EulerXYJoint <: JointType end

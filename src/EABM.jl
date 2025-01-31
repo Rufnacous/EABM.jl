@@ -41,5 +41,59 @@ module EABM
     export dof, n_bodies, get_position;
     
 
+    function memory_test(;n=1)
+
+        body = NPendulum(n, 0.1, 0.1, RotaryJoint(:y), radius=0.01);
+        harness = StateHarness(Float64, body);
+        generalized_state = zeros(body);
+
+        memallocd = @allocated set_state!(body, harness, generalized_state);
+        println("Allocated by set_state! : ", memallocd);
+
+        f = force_none()
+        t = torque_none()
+        al = body.articulation_zero;
+        a = al.children[1];
+        i = harness[a]; il = harness[al];
+        
+        memallocd = @allocated aba_pass1!( a,i,al,il, 0.0, f,t);
+        println("Allocated by aba_pass1! : ", memallocd);
+        
+        memallocd = @allocated aba_pass2!( a,i,al,il, 0.0, f,t);
+        println("Allocated by aba_pass2! : ", memallocd);
+        
+        memallocd = @allocated aba_pass3!( a,i,al,il, 0.0, f,t);
+        println("Allocated by aba_pass3! : ", memallocd);
+
+        
+        memallocd = @allocated featherstones_algorithm(body, harness, generalized_state, 0.0, f, t)
+        println("Allocated by featherstones_algorithm : ", memallocd);
+
+        
+        
+
+        # aba_pass1!(
+        #     a::Articulation, i::ArticulationHarness,
+        #     aλ::Articulation, iλ::ArticulationHarness,
+        #     t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
+
+        
+
+
+        # a = body.articulation_zero.children[1];
+        # memallocd = @allocated j_calc(a.joint_type, harness[a]);
+        # println("Allocated by j_calc : ", memallocd);
+
+        
+
+        # E = zeros(3,3); p = zeros(3); q = [0]; qdt = [0];
+        # memallocd = @allocated get_transformations!(a.joint_type, q,qdt, S,Ṡ,E,p);
+        # println("Allocated by get_transformations! : ", memallocd);
+
+        return
+
+    end
+
+
 end
 

@@ -75,32 +75,54 @@ end
 
 function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, q_dt::Vector{<: Real})
     # Processes the raw states of q and q_dt into the state harness, for velocities, transforms, and cartesian positions.
+    i = harness[a];
+    λi = harness[λ(a)];
 
-    harness[a].q = q;
-    harness[a].q_dt = q_dt;
+    i.q = q;
+    i.q_dt = q_dt;
 
-    XJ, vJ, cJ, S = j_calc(a.joint_type, harness[a]);
+    XJ = i.λX; #@view i.λX[:,:];
+    vJ = @view i.λX⁻ᵀ[1,:];
+    cJ = @view i.λX⁻ᵀ[2,:];
+    j_calc!(a.joint_type, i,
+        XJ, vJ, cJ, i.S, i.Ṡ);
 
-    harness[a].S = S;
+    mul!(i.λX⁻ᵀ, a.geometry_transform, a.pregeometry_transform);
+    mul!(i.Xλ, XJ, i.λX⁻ᵀ);
+
+    mul!(i.v, i.Xλ, λi.v);
+    i.v += vJ;
+    spatial_cross!(i.c, i.v, vJ);
+    i.c = i.c + cJ;
     
-    harness[a].Xλ = XJ * a.geometry_transform * a.pregeometry_transform;
-    harness[a].λX = inv(harness[a].Xλ); 
-    harness[a].λX⁻ᵀ = Matrix(harness[a].Xλ'); #inv(harness[a].λX)';
+    i.λX = inv(i.Xλ); 
 
-
-    harness[a].v = (harness[a].Xλ * harness[λ(a)].v) + vJ;
-    harness[a].c = cJ + (harness[a].c ⨱ vJ);
-
-    harness[a].X0 = harness[a].Xλ * harness[λ(a)].X0;
     
 
-    OT = harness[a].S * harness[a].q + [0,0,0, (a.child_anchor )...];  
+    # # OT = i.S * i.q + [0,0,0, (a.child_anchor )...];  Needs reinstating if using prismatic joints.
 
-    harness[a].p = harness[λ(a)].p + 
-        (harness[λ(a)].X0[4:6,4:6]' * a.pregeometry_transform[4:6,4:6]' * a.pregeometry) + 
-        (harness[a].X0[4:6,4:6]' * OT[4:6]);
+    G = @view i.λX⁻ᵀ[1:3,1:3];
+    G1 = @view λi.X0[4:6,4:6];
+    G2 = @view a.pregeometry_transform[4:6,4:6];
+    mul!(G, G1', G2');
 
-    harness[a].V = harness[a].X0' * (xlt(OT[4:6]) * harness[a].v)
+    mul!(i.p, G, a.pregeometry)
+    p_add = @view i.λX⁻ᵀ[3,1:3];
+    iX0 = @view i.X0[4:6,4:6];
+    mul!(p_add, iX0', a.child_anchor)
+    i.p += p_add;
+    i.p += λi.p;
+
+    
+    xlt_OT = i.X0;
+    xlt!(xlt_OT, a.child_anchor);
+
+
+    
+    mul!(i.X0, i.Xλ, λi.X0);
+    
+    mul!(i.V, i.X0', xlt_OT * i.v)
+    i.λX⁻ᵀ .= i.Xλ'; #inv(i.λX)';
 end
 
 
@@ -148,6 +170,7 @@ ArticulationHarness( a::Articulation, numeric_type::DataType ) =
         zeros( numeric_type, dof(a), dof(a) ),
         zeros( numeric_type, dof(a) ),
         
+        zeros( numeric_type, 6, dof(a) ),
         zeros( numeric_type, 6, dof(a) ),
         
         zeros( numeric_type, 6 ),

@@ -11,7 +11,7 @@ function NPendulum(n::Integer, seg_lengths::Number, seg_masses::Number, joints::
     
     for ni = 1:n
         if compound == :cylinder
-            anext = CylinderArticulation(ni, next_free_state_index, joints, alast, seg_lengths, compoundargs[:radius], mass, nothing)
+            anext = CylinderArticulation(ni, next_free_state_index, joints, alast, seg_lengths, compoundargs[:radius], seg_masses, nothing)
         end
         next_free_state_index += dof(anext);
         push!(alast.children, anext); 

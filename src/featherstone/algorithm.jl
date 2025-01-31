@@ -34,8 +34,10 @@ function aba_pass1!(
     aλ::Articulation, iλ::ArticulationHarness,
     t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
     
-    i.IA = a.I;
-    i.pA = i.v ⨳ (a.I * i.v) - fx(a,i,t);
+    dual_spatial_cross!(i.pA, i.v, (a.I * i.v));
+    fx(i.pA, a,i,t, (@view i.IA[1:3,1:3]));
+    
+    i.IA .= a.I;
     return
 end
 
@@ -46,6 +48,9 @@ function aba_pass2!(
 
     i.U = i.IA * i.S;
     i.D = i.S' * i.U;
+    # display(i.IA)
+    # display(i.S)
+    # display(i.D)
     i.D⁻¹ = inv(i.D);
     i.u = τ(a,i,t) - (i.S' * i.pA);
     

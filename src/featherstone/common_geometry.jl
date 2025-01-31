@@ -19,7 +19,7 @@ end
 CylinderArticulation(
     number::Integer, next_free_state_index::Integer, joint::JointType,
     parent::Articulation, length::Real, radius::Real, mass::Real, properties;
-    curvature::Matrix{<:Real}=[1 0 0; 0 1 0; 0 0 1], pregeometry::Vector{<:Real}=[0,0,0]
+    curvature::Matrix{<:Real}=[1 0 0; 0 1 0; 0 0 1], pregeometry::Vector{<:Real}=[0.0,0,0]
 ) = Articulation(
     number, next_free_state_index, joint, parent, length,
     mass, cylinder_inertia(mass, length, radius), curvature, [0,0,length], pregeometry, [0,0,0.5length], properties
@@ -78,6 +78,31 @@ function rotate_z(theta::Number)
         -s  c   0;
         0   0   1]
 end
+function rotate_x!(theta::Number, R::AbstractMatrix{<:Number})
+    c = cos(theta); s = sin(theta)
+    R .= [
+        1   0   0;
+        0   c   s;
+        0  -s   c
+    ]
+end
+
+function rotate_y!(theta::Number, R::AbstractMatrix{<:Number})
+    c = cos(theta); s = sin(theta)
+    R .= [
+        c   0  -s;
+        0   1   0;
+        s   0   c
+    ]
+end
+
+function rotate_z!(theta::Number, R::AbstractMatrix{<:Number})
+    c = cos(theta); s = sin(theta)
+    R .= 0;
+    R[1,1] = c; R[2,2] = c; R[3,3] = 1;
+    R[1,2] = s; R[2,1] = -s;
+end
+
 function get_rotation(a::Vector{<: Number}, b::Vector{<: Number})
     # b = Ra
     # https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
