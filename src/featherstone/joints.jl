@@ -88,9 +88,9 @@ function get_transformations(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: 
 end
 function get_transformations!(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: Real}, S,Ṡ,E,p)
     S .= 0;
-    S[2, 1] = 1;
+    S[1, 1] = 1;
     Ṡ .= 0;
-    rotate_y!(q[1], E);
+    rotate_x!(q[1], E);
     p .= 0;
 end
 
@@ -154,4 +154,18 @@ function get_transformations(j::BendingJoint, q::Vector{<: Real}, qdt::Vector{<:
     p = [0,0,0];
     return (S, Ṡ, E, p);
 
+end
+function get_transformations!(j::BendingJoint, q::Vector{<: Real}, qdt::Vector{<: Real}, S,Ṡ,E,p)
+    cy = cos(q[1]); sy = sin(q[1]); cz = cos(q[2]); sz = sin(q[2]);
+    qdtz = qdt[2];
+
+    S .= 0;
+    S[1, 2] = 1;
+    S[2,1] = cz;
+    
+    Ṡ .= 0;
+    Ṡ[2,1] = -sz*qdtz;
+    
+    E .= get_rotation_b_is_ez([sy*cz, -sz, cy*cz]);
+    p .= 0;
 end

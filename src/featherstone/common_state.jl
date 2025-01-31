@@ -89,8 +89,8 @@ function set_state!(a::Articulation, harness::StateHarness, q::AbstractVector{<:
     i = harness[a];
     λi = harness[λ(a)];
 
-    i.q .= q;
-    i.q_dt .= q_dt;
+    i.q[:] .= q;
+    i.q_dt[:] .= q_dt;
 
     XJ = i.λX; #@view i.λX[:,:];
     vJ = @view i.λX⁻ᵀ[1,:];
@@ -147,19 +147,20 @@ end
 
 # Initialise a null state harness for a certain type. numeric_type tracking allows use with ForwardDiff.
 function StateHarness(numeric_type::DataType, body::AbstractArticulatedBody)
-    a_harnesses::Vector{ArticulationHarness} = [];
+    a_harnesses::Vector{ArticulationHarness} = Vector{ArticulationHarness}(undef, 1+n_bodies(body));
+    sh = StateHarness(a_harnesses);
 
-    push_articulation_harness!(body.articulation_zero, numeric_type, a_harnesses)
+    push_articulation_harness!(body.articulation_zero, numeric_type, sh)
     a_harnesses[1].v = [0,0,0,0,0,0];
     a_harnesses[1].p = [0,0,0];
     a_harnesses[1].X0 = Matrix{Float64}(I(6));
 
-    forward_recurse_iterative!(body, push_articulation_harness!, numeric_type, a_harnesses)
+    forward_recurse_iterative!(body, push_articulation_harness!, numeric_type, sh)
 
-    return StateHarness(a_harnesses)
+    return sh
 end
-function push_articulation_harness!(a::Articulation, numeric_type::DataType, a_harnesses::Vector{ArticulationHarness})
-    push!( a_harnesses, ArticulationHarness(a, numeric_type) )
+function push_articulation_harness!(a::Articulation, numeric_type::DataType, sh::StateHarness)
+    sh[a] = ArticulationHarness(a, numeric_type);
     
 end
 
@@ -202,5 +203,12 @@ function get_torque(body::AbstractArticulatedBody, harness::StateHarness)
     return torques;
 end
 function get_torque(a::Articulation, torques::Vector{<:Real}, harness::StateHarness)
+    torques[a.state_indices] = harness[a].u;
+end
+
+function get_torque!(body::AbstractArticulatedBody, harness::StateHarness, torques)
+    forward_recurse_iterative!(body, get_torque!, torques, harness);
+end
+function get_torque!(a::Articulation, torques::Vector{<:Real}, harness::StateHarness)
     torques[a.state_indices] = harness[a].u;
 end

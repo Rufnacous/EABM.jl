@@ -42,48 +42,48 @@ end
 
 function make_statics_problem(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, state_harness::StateHarness)
     return let body = body, force = force, torque = torque, state_harness = state_harness
-        calculator = ab_torque_calculator(body);
-        (u) -> calculator(body, state_harness, u, 0, force, torque)
+        (du,u) -> ab_torque_calculator(body, state_harness, u, 0, force, torque,du)
     end
 end
 
-function aba_pass2_statics(stiffnesses)
+function statics_problem(du,u,p,t)
+    ab_torque_calculator(p[1], p[2], u, 0, p[3], p[4], du)
+end
 
-    function aba_pass2_statics!(
-        a::Articulation, i::ArticulationHarness,
-        aλ::Articulation, iλ::ArticulationHarness,
-        t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
+function aba_pass2_statics!(
+    a::Articulation, i::ArticulationHarness,
+    aλ::Articulation, iλ::ArticulationHarness,
+    t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
 
-        i.U = i.IA * i.S;
-        i.D = i.S' * i.U;
-        i.D⁻¹ = inv(i.D);
-        i.u = (τ(a,i,t) - (i.S' * i.pA)) ./ stiffnesses[a.state_indices];
-        # decreases problem stiffness + improves ease of use.
-        # u is returned by get_torque but corresponds to a linear estimate of the
-        # displaced angle.
-        
-        if aλ.body_number == 0
-            return
-        end
-        Ia = i.IA
-         # - (i.U * i.D⁻¹ * (i.U)');
-        pa = i.pA
-         # + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
-        # removed to decrease stiffness, as unecessary to solution.
+    mul!(i.U, i.IA, i.S);
+    mul!(i.D, i.S', i.U);
+    i.D⁻¹ = inv(i.D);
 
-        iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
-        iλ.pA += i.λX⁻ᵀ * pa;
+    stiffnesses = diag(i.S[1:3,:]' * a.properties.elastics.spatial_rigidity * i.S[1:3,:]);
+    i.u = (τ(a,i,t) - (i.S' * i.pA)) ./ stiffnesses
+    # decreases problem stiffness + improves ease of use.
+    # u is returned by get_torque but corresponds to a linear estimate of the
+    # displaced angle.
+    
+    if aλ.body_number == 0
         return
     end
+    Ia = i.IA
+        # - (i.U * i.D⁻¹ * (i.U)');
+    pa = i.pA
+        # + (Ia * i.c) + (i.U * i.D⁻¹ * i.u);
+    # removed to decrease stiffness, as unecessary to solution.
 
-    return aba_pass2_statics!;
+    iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
+    iλ.pA += i.λX⁻ᵀ * pa;
+    return
 end
 
 # ab_torque_calculator is an ArticulatedBodyAlgorithm for use in statics solution.
-ab_torque_calculator(body::AbstractArticulatedBody) = ArticulatedBodyAlgorithm(
+ab_torque_calculator = ArticulatedBodyAlgorithm(
     [[ ((a,s,t,fx,τ) -> step(a, s[a], λ(a), s[λ(a)], t, fx, τ), action)
         for (step, action) in 
             [ (aba_pass1!, :forward),
-            (aba_pass2_statics(get_stiffnesses(body)), :backward)
-            ] ]..., (get_torque, :return)]
+            (aba_pass2_statics!, :backward)
+            ] ]..., (get_torque!, :return)]
     );
