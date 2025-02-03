@@ -9,7 +9,7 @@ function static_posture(body::AbstractArticulatedBody, force::AbstractExternalFo
     J = (x,p) -> jacobian((u) -> statics_problem(u,p), x);
     
     initial = zeros(dof(body));
-    return solver(statics_problem, J, initial, repeat_condition, (body, (float_state_harness, dual_harness), force, torque));
+    return solver(statics_problem, J, initial, repeat_condition, (body, (float_state_harness, dual_state_harness), force, torque));
 end
 
 
@@ -21,7 +21,7 @@ function newton_raphson(relaxation::Number)
         x_next = x .- (inv(J(x, p)) * f(x, p));
         while repeat_condition(i, x, x_next, f, J)
             x = x .+ relaxation * (x_next .- x);
-            x_next = x .- (inv(J(x)) * f(x));
+            x_next = x .- (inv(J(x, p)) * f(x, p));
             i += 1;
         end
         return x;
