@@ -18,7 +18,6 @@ function j_calc(j::JointType, s::ArticulationHarness)
     return XJ, vJ, cJ, S
 end
 
-
 # Just to be use for the articulation_zero of a body.
 struct ArticulationZeroJoint <: JointType end
 dof(j::ArticulationZeroJoint) = 0;
@@ -68,7 +67,6 @@ function get_transformations(j::RotaryJoint, q::Vector{<: Real}, qdt::Vector{<: 
         )
     end
 end
-
 
 # 2DOF bending joints akin to Euler Rotations. Suffer from small-angle limitations.
 struct EulerXYJoint <: JointType end

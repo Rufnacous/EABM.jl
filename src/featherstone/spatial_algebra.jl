@@ -8,7 +8,6 @@ function 𝞦(x::Vector{<: Real})
              x[3]  0    -x[1] ;
             -x[2]  x[1]  0    ];
 end
-
 # Spatial cross product
 function spatial_cross(a,b)
     return a ⨱ b;
@@ -22,6 +21,7 @@ function ⨱(a::Vector{<: Real}, b::Vector{<: Real})
     end
     return [ 𝞦(a[1:3]) zeros(3,3) ; 𝞦(a[4:6]) 𝞦(a[1:3]) ] * b;
 end
+
 # Dual of spatial cross product
 function dual_spatial_cross(a,b)
     return a ⨳ b;

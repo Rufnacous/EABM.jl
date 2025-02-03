@@ -13,7 +13,6 @@ end
 
 
 
-
 function get_position(body::AbstractArticulatedBody, state::Vector{<:Real}; with_retrace::Bool=false)
     # returns the cartesian positions of articulations in a 3xN matrix. with_retrace is useful for line plotting.
     if with_retrace
@@ -60,7 +59,6 @@ end
 
 
 
-
 function set_state!(articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
     # loads a state vector into a state harness, for use by the ABA.
     forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state, length(generalized_state) == 2dof(articulated_body));
@@ -102,6 +100,7 @@ function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, 
 
     harness[a].V = harness[a].X0' * (xlt(OT[4:6]) * harness[a].v)
 end
+    
 
 
 
@@ -114,19 +113,20 @@ end
 
 # Initialise a null state harness for a certain type. numeric_type tracking allows use with ForwardDiff.
 function StateHarness(numeric_type::DataType, body::AbstractArticulatedBody)
-    a_harnesses::Vector{ArticulationHarness} = [];
+    a_harnesses::Vector{ArticulationHarness} = Vector{ArticulationHarness}(undef, 1+n_bodies(body));
+    sh = StateHarness(a_harnesses);
 
-    push_articulation_harness!(body.articulation_zero, numeric_type, a_harnesses)
+    push_articulation_harness!(body.articulation_zero, numeric_type, sh)
     a_harnesses[1].v = [0,0,0,0,0,0];
     a_harnesses[1].p = [0,0,0];
     a_harnesses[1].X0 = Matrix{Float64}(I(6));
 
-    forward_recurse_iterative!(body, push_articulation_harness!, numeric_type, a_harnesses)
+    forward_recurse_iterative!(body, push_articulation_harness!, numeric_type, sh)
 
-    return StateHarness(a_harnesses)
+    return sh
 end
-function push_articulation_harness!(a::Articulation, numeric_type::DataType, a_harnesses::Vector{ArticulationHarness})
-    push!( a_harnesses, ArticulationHarness(a, numeric_type) )
+function push_articulation_harness!(a::Articulation, numeric_type::DataType, sh::StateHarness)
+    sh[a] = ArticulationHarness(a, numeric_type);
     
 end
 
@@ -148,6 +148,7 @@ ArticulationHarness( a::Articulation, numeric_type::DataType ) =
         zeros( numeric_type, dof(a), dof(a) ),
         zeros( numeric_type, dof(a) ),
         
+        zeros( numeric_type, 6, dof(a) ),
         zeros( numeric_type, 6, dof(a) ),
         
         zeros( numeric_type, 6 ),

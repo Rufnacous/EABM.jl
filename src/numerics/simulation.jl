@@ -19,7 +19,7 @@ function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, t
     checkpoints = checkpoints .* simtime;
     
     prob = ODEProblem(
-        make_vector_cauchy_problem(dynamics_algorithm), initcond, (0, simtime), (body, float_state_harness, dual_state_harness, force, torque),
+        vector_cauchy_problem, initcond, (0, simtime), (body, float_state_harness, dual_state_harness, force, torque, dynamics_algorithm),
         tstops=checkpoints);
 
     freqs, shapes = frequencies(body, force, torque, dynamics_algorithm=dynamics_algorithm);
@@ -41,18 +41,14 @@ function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, t
     
 end
 
-function make_vector_cauchy_problem(dynamics_algorithm::ArticulatedBodyAlgorithm)
-    return let dynamics_algorithm = dynamics_algorithm
-        (args...) -> vector_cauchy_problem(args..., dynamics_algorithm);
-    end
-end
 
 function vector_cauchy_problem(du::Vector{<:Number}, u::Vector{<:Number},
-    p::Tuple{AbstractArticulatedBody, StateHarness, StateHarness, AbstractExternalForce, AbstractInternalTorque},
-    t::Real, dynamics_algorithm::ArticulatedBodyAlgorithm)
+    p::Tuple{AbstractArticulatedBody, StateHarness, StateHarness, AbstractExternalForce, AbstractInternalTorque, ArticulatedBodyAlgorithm},
+    t::Real)
 
+    alg = p[6];
     du[1:dof(p[1])] = u[1+dof(p[1]):end];
-    du[1+dof(p[1]):end] = dynamics_algorithm(p[1], pick_harness(typeof(u).parameters[1], p[2], p[3]), u, t, p[4], p[5]);
+    du[1+dof(p[1]):end] = alg(p[1], pick_harness(typeof(u).parameters[1], p[2], p[3]), u, t, p[4], p[5]);
 end
 
 function pick_harness(u_type::DataType, float_harness::StateHarness, dual_harness::StateHarness)

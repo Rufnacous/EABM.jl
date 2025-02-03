@@ -1,6 +1,6 @@
 
 # Forces and torques are callable.
-function (force::ExternalForce)(a::Articulation, i::ArticulationHarness, t::Real)
+function (force::ExternalForce)(a::Articulation, i::ArticulationHarness, t::Real)   
     # This transform converts the force from global to local terms for the ABA,
     # and applies the force to the mass center.
     return xlt(a.mass_center)' * i.X0 * [0,0,0,force.force(a,i,t)...];

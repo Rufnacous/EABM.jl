@@ -100,6 +100,7 @@ mutable struct ArticulationHarness
 
     # Joint motion subspace
     S::Matrix{<: Real}
+    Ṡ::Matrix{<: Real}
     
     v::Vector{<: Real} # velocity (local)
     c::Vector{<: Real} # coriolis terms (local)

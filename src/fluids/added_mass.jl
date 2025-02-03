@@ -11,11 +11,6 @@ function featherstones_with_added_mass(fluid_density::Number, flow::Function)
         If, Sf = get_added_inertia_properties(a.properties.ffi, i, fluid_density);
         Uf = If * Sf; Df = Sf' * Uf; D⁻¹f = inv(Df);
         Iaf = If - (Uf * D⁻¹f * Uf');
-        # display(If)
-        # # display(Sf)
-        # display(Uf * D⁻¹f * Uf')
-        # display(Iaf)
-        # readline()
 
         U_global_absolute = [0,0,0,flow(i.p, t)...];
         U_local_absolute = i.X0 * U_global_absolute;
