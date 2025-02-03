@@ -55,10 +55,9 @@ function aba_pass2_statics!(
     aλ::Articulation, iλ::ArticulationHarness,
     t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
 
-    mul!(i.U, i.IA, i.S);
-    mul!(i.D, i.S', i.U);
+    i.U = i.IA * i.S;
+    i.D = i.S' * i.U;
     i.D⁻¹ = inv(i.D);
-
     stiffnesses = diag(i.S[1:3,:]' * a.properties.elastics.spatial_rigidity * i.S[1:3,:]);
     i.u = (τ(a,i,t) - (i.S' * i.pA)) ./ stiffnesses
     # decreases problem stiffness + improves ease of use.
@@ -77,6 +76,7 @@ function aba_pass2_statics!(
     iλ.IA += i.λX⁻ᵀ * Ia * i.Xλ;
     iλ.pA += i.λX⁻ᵀ * pa;
     return
+
 end
 
 # ab_torque_calculator is an ArticulatedBodyAlgorithm for use in statics solution.
@@ -85,5 +85,5 @@ ab_torque_calculator = ArticulatedBodyAlgorithm(
         for (step, action) in 
             [ (aba_pass1!, :forward),
             (aba_pass2_statics!, :backward)
-            ] ]..., (get_torque!, :return)]
+            ] ]..., (get_torque, :return)]
     );

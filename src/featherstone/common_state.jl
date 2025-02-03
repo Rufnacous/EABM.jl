@@ -69,72 +69,48 @@ end
 
 
 
-
 function set_state!(articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real})
     # loads a state vector into a state harness, for use by the ABA.
     forward_recurse_iterative!(articulated_body, set_state!, articulated_body, harness, generalized_state, length(generalized_state) == 2dof(articulated_body));
 end
 function set_state!(a::Articulation, articulated_body::AbstractArticulatedBody, harness::StateHarness, generalized_state::Vector{<: Real}, includes_velocities::Bool)
-    q = generalized_state[a.state_indices]; 
     if includes_velocities
-        qdt = generalized_state[dof(articulated_body) .+ a.state_indices]; 
-        set_state!(a, harness, q, qdt);
+        set_state!(a, harness, generalized_state[a.state_indices], generalized_state[dof(articulated_body) .+ a.state_indices]);
     else
-        set_state!(a, harness, q, zeros(length(a.state_indices)));
+        set_state!(a, harness, generalized_state[a.state_indices], zeros(length(a.state_indices)));
     end
 end
 
-function set_state!(a::Articulation, harness::StateHarness, q::AbstractVector{<: Real}, q_dt::AbstractVector{<: Real})
+function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, q_dt::Vector{<: Real})
     # Processes the raw states of q and q_dt into the state harness, for velocities, transforms, and cartesian positions.
-    i = harness[a];
-    λi = harness[λ(a)];
 
-    i.q[:] .= q;
-    i.q_dt[:] .= q_dt;
+    harness[a].q = q;
+    harness[a].q_dt = q_dt;
 
-    XJ = i.λX; #@view i.λX[:,:];
-    vJ = @view i.λX⁻ᵀ[1,:];
-    cJ = @view i.λX⁻ᵀ[2,:];
-    j_calc!(a.joint_type, i,
-        XJ, vJ, cJ, i.S, i.Ṡ);
+    XJ, vJ, cJ, S = j_calc(a.joint_type, harness[a]);
 
-    mul!(i.λX⁻ᵀ, a.geometry_transform, a.pregeometry_transform);
-    mul!(i.Xλ, XJ, i.λX⁻ᵀ);
-
-    mul!(i.v, i.Xλ, λi.v);
-    i.v += vJ;
-    spatial_cross!(i.c, i.v, vJ);
-    i.c = i.c + cJ;
+    harness[a].S = S;
     
-    i.λX = inv(i.Xλ); 
+    harness[a].Xλ = XJ * a.geometry_transform * a.pregeometry_transform;
+    harness[a].λX = inv(harness[a].Xλ); 
+    harness[a].λX⁻ᵀ = Matrix(harness[a].Xλ'); #inv(harness[a].λX)';
 
+
+    harness[a].v = (harness[a].Xλ * harness[λ(a)].v) + vJ;
+    harness[a].c = cJ + (harness[a].c ⨱ vJ);
+
+    harness[a].X0 = harness[a].Xλ * harness[λ(a)].X0;
     
 
-    # # OT = i.S * i.q + [0,0,0, (a.child_anchor )...];  Needs reinstating if using prismatic joints.
+    OT = harness[a].S * harness[a].q + [0,0,0, (a.child_anchor )...];  
 
-    G = @view i.λX⁻ᵀ[1:3,1:3];
-    G1 = @view λi.X0[4:6,4:6];
-    G2 = @view a.pregeometry_transform[4:6,4:6];
-    mul!(G, G1', G2');
+    harness[a].p = harness[λ(a)].p + 
+        (harness[λ(a)].X0[4:6,4:6]' * a.pregeometry_transform[4:6,4:6]' * a.pregeometry) + 
+        (harness[a].X0[4:6,4:6]' * OT[4:6]);
 
-    mul!(i.p, G, a.pregeometry)
-    p_add = @view i.λX⁻ᵀ[3,1:3];
-    iX0 = @view i.X0[4:6,4:6];
-    mul!(p_add, iX0', a.child_anchor)
-    i.p += p_add;
-    i.p += λi.p;
-
-    
-    xlt_OT = i.X0;
-    xlt!(xlt_OT, a.child_anchor);
-
-
-    
-    mul!(i.X0, i.Xλ, λi.X0);
-    
-    mul!(i.V, i.X0', xlt_OT * i.v)
-    i.λX⁻ᵀ .= i.Xλ'; #inv(i.λX)';
+    harness[a].V = harness[a].X0' * (xlt(OT[4:6]) * harness[a].v)
 end
+    
 
 
 

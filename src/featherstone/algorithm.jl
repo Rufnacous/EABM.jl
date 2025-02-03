@@ -19,7 +19,7 @@ function (algorithm::ArticulatedBodyAlgorithm)(articulated_body::AbstractArticul
     # Each step is either the final step which returns data, or is forward/backward recursed.
     for (step, action) in algorithm.passes
         if (action == :return)
-            step(articulated_body, harness, returnvec);
+            returnvec[:] .= step(articulated_body, harness);
         elseif (action == :forward)
             forward_recurse_iterative!(articulated_body, step, harness, time, force, torque);
         elseif (action == :backward)
@@ -36,10 +36,8 @@ function aba_pass1!(
     aλ::Articulation, iλ::ArticulationHarness,
     t::Real, fx::AbstractExternalForce, τ::AbstractInternalTorque    )
     
-    dual_spatial_cross!(i.pA, i.v, (a.I * i.v));
-    fx(i.pA, a,i,t, (@view i.IA[1:3,1:3]));
-    
-    i.IA .= a.I;
+    i.IA = a.I;
+    i.pA = i.v ⨳ (a.I * i.v) - fx(a,i,t);
     return
 end
 
