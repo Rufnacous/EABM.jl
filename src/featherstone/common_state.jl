@@ -10,16 +10,6 @@ function get_acceleration(a::Articulation, accel::Vector{<:Real}, harness::State
     accel[a.state_indices] = harness[a].q_d²t;
 end
 
-function get_acceleration!(body::AbstractArticulatedBody, harness::StateHarness, accel::Vector{<:Real})
-    # returns the accelerations of an articulated body as a vector.
-    forward_recurse_iterative!(body, get_acceleration!, accel, harness);
-end
-function get_acceleration!(a::Articulation, accel::Vector{<:Real}, harness::StateHarness)
-    # inner loop function for the above.
-    accel[a.state_indices] = harness[a].q_d²t;
-end
-
-
 
 
 
@@ -97,7 +87,7 @@ function set_state!(a::Articulation, harness::StateHarness, q::Vector{<: Real}, 
 
 
     harness[a].v = (harness[a].Xλ * harness[λ(a)].v) + vJ;
-    harness[a].c = cJ + (harness[a].c ⨱ vJ);
+    harness[a].c = cJ + (harness[a].v ⨱ vJ);
 
     harness[a].X0 = harness[a].Xλ * harness[λ(a)].X0;
     
@@ -179,12 +169,5 @@ function get_torque(body::AbstractArticulatedBody, harness::StateHarness)
     return torques;
 end
 function get_torque(a::Articulation, torques::Vector{<:Real}, harness::StateHarness)
-    torques[a.state_indices] = harness[a].u;
-end
-
-function get_torque!(body::AbstractArticulatedBody, harness::StateHarness, torques)
-    forward_recurse_iterative!(body, get_torque!, torques, harness);
-end
-function get_torque!(a::Articulation, torques::Vector{<:Real}, harness::StateHarness)
     torques[a.state_indices] = harness[a].u;
 end

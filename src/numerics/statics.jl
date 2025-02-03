@@ -5,22 +5,20 @@ function static_posture(body::AbstractArticulatedBody, force::AbstractExternalFo
         solver=newton_raphson(0.01), repeat_condition=standard_repeat_condition)
     float_state_harness = StateHarness(Float64, body);
     dual_state_harness = StateHarness(Float64, body);
-    f = make_statics_problem(body, force, torque, float_state_harness);
 
-    Jfx = make_statics_problem(body, force, torque, dual_state_harness);
-    J(x) = jacobian(u -> Jfx(u), x);
+    J = (x,p) -> jacobian((u) -> statics_problem(u,p), x);
     
     initial = zeros(dof(body));
-    return solver(f, J, initial, repeat_condition);
+    return solver(statics_problem, J, initial, repeat_condition, (body, (float_state_harness, dual_harness), force, torque));
 end
 
 
 
 
 function newton_raphson(relaxation::Number)
-    function solver(f, J, x::Vector{<: Real}, repeat_condition)
+    function solver(f, J, x::Vector{<: Real}, repeat_condition, p)
         i = 0;
-        x_next = x .- (inv(J(x)) * f(x));
+        x_next = x .- (inv(J(x, p)) * f(x, p));
         while repeat_condition(i, x, x_next, f, J)
             x = x .+ relaxation * (x_next .- x);
             x_next = x .- (inv(J(x)) * f(x));
@@ -38,16 +36,11 @@ end
 
 
 
-
-
-function make_statics_problem(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, state_harness::StateHarness)
-    return let body = body, force = force, torque = torque, state_harness = state_harness
-        (du,u) -> ab_torque_calculator(body, state_harness, u, 0, force, torque,du)
-    end
+function statics_problem(u,p,t)
+    ab_torque_calculator(p[1], pick_harness(typeof(u).parameters[1], p[2]...), u, 0, p[3], p[4])
 end
-
-function statics_problem(du,u,p,t)
-    ab_torque_calculator(p[1], p[2], u, 0, p[3], p[4], du)
+function statics_problem(u,p)
+    statics_problem(u,p,0)
 end
 
 function aba_pass2_statics!(

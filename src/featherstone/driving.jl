@@ -1,10 +1,8 @@
 
 # Forces and torques are callable.
-#pA::Vector{<:Real}, 
-function (force::ExternalForce)(a::Articulation, i::ArticulationHarness, t::Real) #, freememory)
+function (force::ExternalForce)(a::Articulation, i::ArticulationHarness, t::Real)   
     # This transform converts the force from global to local terms for the ABA,
     # and applies the force to the mass center.
-    # xltT_mul_btm!(pA, a.mass_center, i.X0, force.force(a,i,t), freememory);
     return xlt(a.mass_center)' * i.X0 * [0,0,0,force.force(a,i,t)...];
 end
 (torque::InternalTorque)(args...) = torque.torque(args...);
@@ -37,7 +35,7 @@ force_gravity(;g::Number=9.81, downwards::Vector{<:Number}=[0,0,-1]) = ExternalF
 
 function get_reaction_force(b::AbstractArticulatedBody, q::Vector{<:Number}, force::AbstractExternalForce, torque::AbstractInternalTorque, t::Number; alg::ArticulatedBodyAlgorithm=featherstones_algorithm)
     s = StateHarness(Float64, b);
-    alg(b, s, q, t, force, torque, zeros(b,no_derivatives=true));
+    alg(b, s, q, t, force, torque);
 
     return inv(s[b.articulation_zero.children[1]].X0) * s[b.articulation_zero.children[1]].pA;
 end
