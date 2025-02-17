@@ -77,7 +77,8 @@ For the moment, EABM.jl is not available in the General Registry. To install, fo
 
  For the tests, you will also need to `add Plots`.
  
- 
+
+ If you're interested in STL imports / exports, you may want to check out ![EABMSTLInterface.jl](https://github.com/Rufnacous/EABMSTLInterface.jl), which is supplied as a proof of concept.
 
 
 ### Contact
