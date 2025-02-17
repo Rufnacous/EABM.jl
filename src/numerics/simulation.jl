@@ -11,7 +11,7 @@
 
 function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, torque::AbstractInternalTorque, simtime::Real;
     initcond::Vector{<:Real}=zeros(body), dt_modify::Real=1.0, dynamics_algorithm::ArticulatedBodyAlgorithm=featherstones_algorithm,
-    integrator::Symbol=:approx, checkpoints::Vector{<:Real}=zeros(0))
+    integrator::Symbol=:approx, checkpoints::Vector{<:Real}=zeros(0), log_dt::Bool=true)
 
     float_state_harness = StateHarness(Float64, body);
     dual_state_harness = StateHarness(Float64, body);
@@ -24,7 +24,9 @@ function simulate(body::AbstractArticulatedBody, force::AbstractExternalForce, t
 
     freqs, shapes = frequencies(body, force, torque, dynamics_algorithm=dynamics_algorithm);
     dt = 0.5dt_modify / maximum(freqs);
-    println("dt ",dt)
+    if log_dt
+        println("dt ",dt)
+    end
 
     starttime = time();
     condition(u, t, integrator) = any(t .== checkpoints);
